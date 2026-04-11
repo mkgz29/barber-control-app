@@ -41,13 +41,6 @@ VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_ANON_KEY=tu-clave-anonima
 ```
 
-## Cómo conectar Supabase
-
-1. Entrá a tu proyecto de Supabase.
-2. Abrí el SQL Editor.
-3. Pegá y ejecutá el contenido de [supabase/schema.sql](./supabase/schema.sql).
-4. En `Authentication > Providers` dejá activo Email.
-5. Si querés un flujo más simple en pruebas, desactivá la confirmación por email.
 
 ## Crear el primer administrador
 
