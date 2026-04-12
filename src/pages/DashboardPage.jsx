@@ -1,10 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import DayCard from "../components/DayCard";
 import StatCard from "../components/StatCard";
 import WeeklyRanking from "../components/WeeklyRanking";
 import { useAuth } from "../context/AuthContext";
 import { getCurrentWeek, getWeekRange, toDateInputValue } from "../lib/date";
-import { getWeeklyBarberRanking } from "../lib/ranking";
 import supabase from "../lib/supabaseClient";
 
 function buildCurrentWeekState(referenceDate = new Date()) {
@@ -23,12 +22,39 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [rankingError, setRankingError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
+  const [todayDate, setTodayDate] = useState(() => toDateInputValue(new Date()));
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
 
+  const haircutsByDay = useMemo(() => {
+    return haircuts.reduce((accumulator, haircut) => {
+      const dateKey = haircut.haircut_date;
+
+      if (!accumulator[dateKey]) {
+        accumulator[dateKey] = [];
+      }
+
+      accumulator[dateKey].push(haircut);
+      return accumulator;
+    }, {});
+  }, [haircuts]);
+
+  const todayDay = useMemo(() => {
+    return days.find((day) => day.date === todayDate) ?? days[0] ?? null;
+  }, [days, todayDate]);
+
+  const remainingDays = useMemo(() => {
+    return days.filter((day) => day.date !== todayDate);
+  }, [days, todayDate]);
+
   useEffect(() => {
     function syncCurrentWeek() {
+      const nextTodayDate = toDateInputValue(new Date());
+      setTodayDate((previousTodayDate) =>
+        previousTodayDate === nextTodayDate ? previousTodayDate : nextTodayDate
+      );
+
       setCurrentWeek((previousWeek) => {
         const nextWeek = buildCurrentWeekState();
         const previousStart = toDateInputValue(previousWeek.range.start);
@@ -84,8 +110,6 @@ export default function DashboardPage() {
 
       setHaircuts(weeklyUserHaircuts || []);
       setWeeklyRanking(globalWeeklyHaircuts || []);
-
-
     } catch (loadError) {
       setError(loadError.message || "No se pudieron cargar los cortes.");
     } finally {
@@ -186,6 +210,18 @@ export default function DashboardPage() {
     (sum, haircut) => sum + Number(haircut.commission_amount),
     0
   );
+  const isAdmin = profile?.role === "admin";
+  const weeklySummaryCards = [
+    ...(isAdmin
+      ? [{ key: "gross", highlight: true, money: true, title: "Total semanal (bruto)", value: weeklyGross }]
+      : []),
+    {
+      key: "commission",
+      money: true,
+      title: isAdmin ? "Total semanal de comision" : "Tu comision semanal",
+      value: weeklyCommission,
+    },
+  ];
 
   return (
     <div className="space-y-5">
@@ -203,9 +239,20 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <StatCard highlight money title="Total semanal (bruto)" value={weeklyGross} />
-          <StatCard money title="Total semanal de comision" value={weeklyCommission} />
+        <div
+          className={`mt-6 grid gap-4 ${
+            weeklySummaryCards.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1"
+          }`}
+        >
+          {weeklySummaryCards.map((card) => (
+            <StatCard
+              highlight={card.highlight}
+              key={card.key}
+              money={card.money}
+              title={card.title}
+              value={card.value}
+            />
+          ))}
         </div>
       </section>
 
@@ -217,6 +264,30 @@ export default function DashboardPage() {
 
       <WeeklyRanking ranking={weeklyRanking} />
 
+      {!loading && todayDay && (
+        <section className="card space-y-5 p-6">
+          <div className="border-b border-stone-200 pb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-700">Hoy</p>
+            <h2 className="mt-2 text-2xl font-bold text-stone-900">Cortes del dia</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Registra y revisa la actividad de hoy.
+            </p>
+          </div>
+
+          <DayCard
+            badgeLabel="Hoy"
+            day={todayDay}
+            featured
+            haircuts={haircutsByDay[todayDay.date] || []}
+            isToday
+            onAddHaircut={handleAddHaircut}
+            onDeleteHaircut={handleDeleteHaircut}
+            onUpdateHaircut={handleUpdateHaircut}
+            saving={saving}
+          />
+        </section>
+      )}
+
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           {error}
@@ -226,19 +297,34 @@ export default function DashboardPage() {
       {loading ? (
         <div className="card p-6 text-center text-sm text-stone-500">Cargando cortes...</div>
       ) : (
-        <div className="grid gap-4">
-          {days.map((day) => (
-            <DayCard
-              day={day}
-              haircuts={haircuts.filter((haircut) => haircut.haircut_date === day.date)}
-              key={day.date}
-              onAddHaircut={handleAddHaircut}
-              onDeleteHaircut={handleDeleteHaircut}
-              onUpdateHaircut={handleUpdateHaircut}
-              saving={saving}
-            />
-          ))}
-        </div>
+        <section className="card space-y-5 p-6">
+          <div className="border-b border-stone-200 pb-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">
+              Semana completa
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-stone-900">Resto de la semana</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Consulta y actualiza los cortes de los demas dias.
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            {remainingDays.map((day) => {
+              return (
+                <DayCard
+                  day={day}
+                  haircuts={haircutsByDay[day.date] || []}
+                  isToday={false}
+                  key={day.date}
+                  onAddHaircut={handleAddHaircut}
+                  onDeleteHaircut={handleDeleteHaircut}
+                  onUpdateHaircut={handleUpdateHaircut}
+                  saving={saving}
+                />
+              );
+            })}
+          </div>
+        </section>
       )}
     </div>
   );

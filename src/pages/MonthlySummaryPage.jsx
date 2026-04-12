@@ -11,7 +11,7 @@ import {
 import supabase from "../lib/supabaseClient";
 
 export default function MonthlySummaryPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [month, setMonth] = useState(getCurrentMonthValue());
   const [groupMode, setGroupMode] = useState("day");
   const [haircuts, setHaircuts] = useState([]);
@@ -67,7 +67,8 @@ export default function MonthlySummaryPage() {
     const groupedMap = new Map();
 
     haircuts.forEach((haircut) => {
-      const key = groupMode === "week" ? getWeekLabelFromDate(haircut.haircut_date) : haircut.haircut_date;
+      const key =
+        groupMode === "week" ? getWeekLabelFromDate(haircut.haircut_date) : haircut.haircut_date;
       const label = groupMode === "week" ? key : formatDateLabel(haircut.haircut_date);
 
       if (!groupedMap.has(key)) {
@@ -89,6 +90,22 @@ export default function MonthlySummaryPage() {
     return Array.from(groupedMap.values());
   }, [groupMode, haircuts]);
 
+  const isAdmin = profile?.role === "admin";
+  const monthlySummaryCards = [
+    ...(isAdmin ? [{ key: "gross", money: true, title: "Total del mes", value: totals.gross }] : []),
+    {
+      key: "commission",
+      money: true,
+      title: isAdmin ? "Total de comision del mes" : "Tu comision mensual",
+      value: totals.commission,
+    },
+    {
+      key: "count",
+      title: "Cantidad de cortes",
+      value: totals.count,
+    },
+  ];
+
   return (
     <div className="space-y-5">
       <section className="card p-6">
@@ -99,7 +116,7 @@ export default function MonthlySummaryPage() {
             </p>
             <h1 className="mt-2 text-3xl font-bold text-stone-900">Resumen mensual</h1>
             <p className="mt-2 text-sm text-stone-600">
-              Filtrá por mes y mirá tus números agrupados por día o semana.
+              Filtra por mes y revisa tus numeros agrupados por dia o semana.
             </p>
           </div>
 
@@ -121,17 +138,25 @@ export default function MonthlySummaryPage() {
                 value={groupMode}
                 onChange={(event) => setGroupMode(event.target.value)}
               >
-                <option value="day">Día</option>
+                <option value="day">Dia</option>
                 <option value="week">Semana</option>
               </select>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-3">
-          <StatCard money title="Total del mes" value={totals.gross} />
-          <StatCard money title="Total de comisión del mes" value={totals.commission} />
-          <StatCard title="Cantidad de cortes" value={totals.count} />
+        <div
+          className={`mt-6 grid gap-4 ${
+            monthlySummaryCards.length >= 3
+              ? "sm:grid-cols-3"
+              : monthlySummaryCards.length === 2
+                ? "sm:grid-cols-2"
+                : "sm:grid-cols-1"
+          }`}
+        >
+          {monthlySummaryCards.map((card) => (
+            <StatCard key={card.key} money={card.money} title={card.title} value={card.value} />
+          ))}
         </div>
       </section>
 
@@ -163,11 +188,13 @@ export default function MonthlySummaryPage() {
                 </div>
 
                 <div className="grid gap-2 text-sm sm:text-right">
-                  <p className="font-semibold text-stone-700">
-                    Total: {formatCurrency(item.total)}
-                  </p>
+                  {isAdmin && (
+                    <p className="font-semibold text-stone-700">
+                      Total: {formatCurrency(item.total)}
+                    </p>
+                  )}
                   <p className="font-semibold text-brand-700">
-                    Comisión: {formatCurrency(item.commission)}
+                    Comision: {formatCurrency(item.commission)}
                   </p>
                 </div>
               </div>
