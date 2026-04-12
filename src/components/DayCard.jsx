@@ -1,10 +1,23 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatCurrency } from "../lib/date";
 
-export default function DayCard({ day, haircuts, onAddHaircut, saving }) {
+const EMPTY_FORM = {
+  service: "",
+  price: "",
+};
+
+export default function DayCard({
+  day,
+  haircuts,
+  onAddHaircut,
+  onDeleteHaircut,
+  onUpdateHaircut,
+  saving,
+}) {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [service, setService] = useState("");
-  const [price, setPrice] = useState("");
+  const [editingHaircutId, setEditingHaircutId] = useState(null);
+  const [haircutToDelete, setHaircutToDelete] = useState(null);
+  const [formValues, setFormValues] = useState(EMPTY_FORM);
   const [error, setError] = useState("");
 
   const total = haircuts.reduce((sum, haircut) => sum + Number(haircut.price), 0);
@@ -13,33 +26,101 @@ export default function DayCard({ day, haircuts, onAddHaircut, saving }) {
     0
   );
 
+  const editingHaircut = useMemo(
+    () => haircuts.find((haircut) => haircut.id === editingHaircutId) ?? null,
+    [editingHaircutId, haircuts]
+  );
+
+  useEffect(() => {
+    if (!editingHaircut) {
+      return;
+    }
+
+    setFormValues({
+      service: editingHaircut.service ?? "",
+      price: String(editingHaircut.price ?? ""),
+    });
+  }, [editingHaircut]);
+
+  function openCreateForm() {
+    setEditingHaircutId(null);
+    setFormValues(EMPTY_FORM);
+    setError("");
+    setIsFormOpen(true);
+  }
+
+  function openEditForm(haircut) {
+    setEditingHaircutId(haircut.id);
+    setFormValues({
+      service: haircut.service ?? "",
+      price: String(haircut.price ?? ""),
+    });
+    setError("");
+    setIsFormOpen(true);
+  }
+
+  function closeForm() {
+    if (saving) {
+      return;
+    }
+
+    setIsFormOpen(false);
+    setEditingHaircutId(null);
+    setFormValues(EMPTY_FORM);
+    setError("");
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     setError("");
 
-    if (!service.trim() || !price) {
+    if (!formValues.service.trim() || !formValues.price) {
       setError("Completá servicio y precio.");
       return;
     }
 
-    const numericPrice = Number(price);
+    const numericPrice = Number(formValues.price);
     if (Number.isNaN(numericPrice) || numericPrice < 0) {
       setError("Ingresá un precio válido.");
       return;
     }
 
-    try {
-      await onAddHaircut({
-        haircut_date: day.date,
-        service: service.trim(),
-        price: numericPrice,
-      });
+    const payload = {
+      haircut_date: day.date,
+      service: formValues.service.trim(),
+      price: numericPrice,
+    };
 
-      setService("");
-      setPrice("");
-      setIsFormOpen(false);
+    try {
+      if (editingHaircutId) {
+        await onUpdateHaircut(editingHaircutId, payload);
+      } else {
+        await onAddHaircut(payload);
+      }
+
+      closeForm();
     } catch (submitError) {
-      setError(submitError.message);
+      setError(submitError.message || "No se pudo guardar el corte.");
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!haircutToDelete) {
+      return;
+    }
+
+    setError("");
+
+    try {
+      await onDeleteHaircut(haircutToDelete.id);
+      setHaircutToDelete(null);
+
+      if (editingHaircutId === haircutToDelete.id) {
+        closeForm();
+      }
+    } catch (submitError) {
+      setError(submitError.message || "No se pudo eliminar el corte.");
+      setHaircutToDelete(null);
     }
   }
 
@@ -51,20 +132,35 @@ export default function DayCard({ day, haircuts, onAddHaircut, saving }) {
           <p className="text-sm text-stone-500">{day.shortLabel}</p>
         </div>
 
-        <button className="btn-secondary" onClick={() => setIsFormOpen((current) => !current)}>
+        <button className="btn-secondary" onClick={openCreateForm} type="button">
           Agregar corte
         </button>
       </div>
 
       {isFormOpen && (
         <form className="mt-4 space-y-3 rounded-2xl bg-stone-50 p-4" onSubmit={handleSubmit}>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-stone-800">
+              {editingHaircutId ? "Editar corte" : "Agregar corte"}
+            </p>
+            <button
+              className="text-sm font-medium text-stone-500"
+              onClick={closeForm}
+              type="button"
+            >
+              Cancelar
+            </button>
+          </div>
+
           <div>
             <label className="mb-1 block text-sm font-medium text-stone-700">Servicio</label>
             <input
               className="input"
               placeholder="Ej: Corte clásico"
-              value={service}
-              onChange={(event) => setService(event.target.value)}
+              value={formValues.service}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, service: event.target.value }))
+              }
             />
           </div>
 
@@ -76,17 +172,43 @@ export default function DayCard({ day, haircuts, onAddHaircut, saving }) {
               inputMode="numeric"
               min="0"
               placeholder="Ej: 8000"
-              value={price}
-              onChange={(event) => setPrice(event.target.value)}
+              value={formValues.price}
+              onChange={(event) =>
+                setFormValues((current) => ({ ...current, price: event.target.value }))
+              }
             />
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <button className="btn-primary w-full" disabled={saving} type="submit">
-            {saving ? "Guardando..." : "Guardar corte"}
+            {saving ? "Guardando..." : editingHaircutId ? "Guardar cambios" : "Guardar corte"}
           </button>
         </form>
+      )}
+
+      {haircutToDelete && (
+        <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4">
+          <p className="text-sm font-semibold text-stone-900">¿Querés eliminar este corte?</p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <button
+              className="btn-secondary w-full sm:w-auto"
+              disabled={saving}
+              onClick={() => setHaircutToDelete(null)}
+              type="button"
+            >
+              Cancelar
+            </button>
+            <button
+              className="btn-primary w-full bg-red-600 hover:bg-red-700 sm:w-auto"
+              disabled={saving}
+              onClick={handleConfirmDelete}
+              type="button"
+            >
+              {saving ? "Eliminando..." : "Eliminar"}
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -112,16 +234,37 @@ export default function DayCard({ day, haircuts, onAddHaircut, saving }) {
         ) : (
           haircuts.map((haircut) => (
             <div
-              className="flex items-center justify-between rounded-2xl border border-stone-200 px-4 py-3"
+              className="flex flex-col gap-3 rounded-2xl border border-stone-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               key={haircut.id}
             >
-              <div>
+              <div className="min-w-0">
                 <p className="font-semibold text-stone-900">{haircut.service}</p>
                 <p className="text-sm text-stone-500">
                   Comisión: {formatCurrency(haircut.commission_amount)}
                 </p>
               </div>
-              <p className="font-bold text-stone-900">{formatCurrency(haircut.price)}</p>
+
+              <div className="flex flex-col gap-2 sm:items-end">
+                <p className="font-bold text-stone-900">{formatCurrency(haircut.price)}</p>
+                <div className="flex gap-2">
+                  <button
+                    className="rounded-xl border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-700"
+                    disabled={saving}
+                    onClick={() => openEditForm(haircut)}
+                    type="button"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="rounded-xl border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700"
+                    disabled={saving}
+                    onClick={() => setHaircutToDelete(haircut)}
+                    type="button"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </div>
             </div>
           ))
         )}

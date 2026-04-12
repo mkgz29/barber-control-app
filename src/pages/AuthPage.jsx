@@ -1,11 +1,21 @@
 import { useEffect, useState } from "react";
-import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
+import AuthStatusScreen from "../components/AuthStatusScreen";
+import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
 
 export default function AuthPage() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { session, profile, loading, signIn, signUp } = useAuth();
+  const {
+    session,
+    profile,
+    loading,
+    bootstrapError,
+    inactiveMessage,
+    signIn,
+    signUp,
+    retryBootstrap,
+  } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,7 +32,22 @@ export default function AuthPage() {
     setError("");
   }, [email, password]);
 
-  if (!loading && session) {
+  if (loading) {
+    return <LoadingScreen message="Estamos preparando tu cuenta..." />;
+  }
+
+  if (bootstrapError) {
+    return (
+      <AuthStatusScreen
+        title="No pudimos preparar tu cuenta"
+        message={bootstrapError}
+        actionLabel="Reintentar"
+        onAction={retryBootstrap}
+      />
+    );
+  }
+
+  if (session) {
     return <Navigate to={redirectTo} replace />;
   }
 
@@ -37,7 +62,6 @@ export default function AuthPage() {
 
     try {
       await signIn(email.trim(), password);
-      navigate("/semana", { replace: true });
     } catch (submitError) {
       setError(submitError.message || "No se pudo ingresar.");
     } finally {
@@ -57,9 +81,7 @@ export default function AuthPage() {
     try {
       const data = await signUp(email.trim(), password);
 
-      if (data.session) {
-        navigate("/perfil", { replace: true });
-      } else {
+      if (!data.session) {
         setInfo("Revisá tu correo para confirmar la cuenta y después ingresá.");
       }
     } catch (submitError) {
@@ -116,6 +138,7 @@ export default function AuthPage() {
               />
             </div>
 
+            {inactiveMessage && <p className="text-sm text-amber-700">{inactiveMessage}</p>}
             {error && <p className="text-sm text-red-600">{error}</p>}
             {info && <p className="text-sm text-emerald-700">{info}</p>}
 

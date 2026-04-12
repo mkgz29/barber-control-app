@@ -110,6 +110,30 @@ for insert
 to authenticated
 with check (auth.uid() = user_id);
 
+create or replace function public.get_global_weekly_haircuts(reference_date date default current_date)
+returns table (
+  barber_name text,
+  price numeric,
+  haircut_date date
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    coalesce(nullif(trim(profiles.full_name), ''), 'Sin nombre') as barber_name,
+    haircuts.price,
+    haircuts.haircut_date
+  from public.haircuts
+  join public.profiles on profiles.id = haircuts.user_id
+  where profiles.is_active = true
+    and haircuts.haircut_date >= date_trunc('week', reference_date::timestamp)::date
+    and haircuts.haircut_date < (date_trunc('week', reference_date::timestamp)::date + interval '7 day')::date
+  order by haircuts.haircut_date asc, haircuts.created_at desc;
+$$;
+
+grant execute on function public.get_global_weekly_haircuts(date) to authenticated;
+
 create or replace function public.admin_update_profile(
   target_profile_id uuid,
   new_is_active boolean,
