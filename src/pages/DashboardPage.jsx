@@ -85,7 +85,7 @@ export default function DashboardPage() {
       setHaircuts(weeklyUserHaircuts || []);
       setWeeklyRanking(globalWeeklyHaircuts || []);
 
-      
+
     } catch (loadError) {
       setError(loadError.message || "No se pudieron cargar los cortes.");
     } finally {

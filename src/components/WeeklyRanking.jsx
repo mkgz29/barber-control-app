@@ -1,18 +1,51 @@
-const PODIUM_BADGES = ["🥇", "🥈", "🥉"];
+import { Crown, Trophy } from "lucide-react";
+
+export function getTrophyColor(position) {
+  if (position === 0) {
+    return "text-yellow-500";
+  }
+
+  if (position === 1) {
+    return "text-gray-400";
+  }
+
+  if (position === 2) {
+    return "text-amber-700";
+  }
+
+  return "text-stone-400";
+}
+
+function getPodiumCardClassName(position) {
+  if (position === 0) {
+    return "border-yellow-200 bg-gradient-to-br from-yellow-50 via-white to-amber-50 shadow-[0_18px_50px_-24px_rgba(202,138,4,0.45)]";
+  }
+
+  return "border-stone-200 bg-gradient-to-br from-stone-50 via-white to-stone-100 shadow-sm";
+}
 
 function PodiumCard({ entry, position }) {
+  const trophyColor = getTrophyColor(position);
+  const isFirstPlace = position === 0;
+
   return (
-    <article className="rounded-3xl border border-brand-100 bg-gradient-to-br from-amber-50 via-white to-stone-50 p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
-            Puesto #{position + 1}
-          </p>
-          <h3 className="mt-2 text-xl font-bold text-stone-900">{entry.barber_name}</h3>
+    <article
+      className={`rounded-3xl border p-5 transition-colors ${getPodiumCardClassName(position)}`}
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
+              Puesto #{position + 1}
+            </p>
+            {isFirstPlace && <Crown className="h-4 w-4 text-yellow-500" aria-hidden="true" />}
+          </div>
+          <h3 className="mt-2 truncate text-xl font-bold text-stone-900">{entry.barber_name}</h3>
         </div>
-        <span className="text-3xl" aria-hidden="true">
-          {PODIUM_BADGES[position]}
-        </span>
+
+        <div className="rounded-2xl bg-white/80 p-3 shadow-sm ring-1 ring-black/5">
+          <Trophy className={`h-7 w-7 ${trophyColor}`} aria-hidden="true" strokeWidth={2.2} />
+        </div>
       </div>
 
       <p className="mt-4 text-sm text-stone-500">Cortes registrados esta semana</p>
@@ -24,17 +57,17 @@ function PodiumCard({ entry, position }) {
 function RankingRow({ entry, position }) {
   return (
     <li className="flex items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-      <div className="flex items-center gap-3">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-sm font-bold text-stone-500">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-sm font-bold text-stone-500">
           {position + 1}
         </span>
-        <div>
-          <p className="font-semibold text-stone-900">{entry.barber_name}</p>
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-stone-900">{entry.barber_name}</p>
           <p className="text-sm text-stone-500">Buen ritmo esta semana</p>
         </div>
       </div>
 
-      <p className="text-sm font-semibold text-stone-700">{entry.total_cuts} cortes</p>
+      <p className="shrink-0 text-sm font-semibold text-stone-700">{entry.total_cuts} cortes</p>
     </li>
   );
 }
