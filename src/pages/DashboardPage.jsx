@@ -1,11 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import DayCard from "../components/DayCard";
 import StatCard from "../components/StatCard";
 import WeeklyRanking from "../components/WeeklyRanking";
 import { useAuth } from "../context/AuthContext";
-import { getWeekDays } from "../lib/date";
+import { getCurrentWeek, getWeekRange, toDateInputValue } from "../lib/date";
 import { getWeeklyBarberRanking } from "../lib/ranking";
 import supabase from "../lib/supabaseClient";
+
+function buildCurrentWeekState(referenceDate = new Date()) {
+  return {
+    days: getCurrentWeek(referenceDate),
+    range: getWeekRange(referenceDate),
+  };
+}
 
 export default function DashboardPage() {
   const { user, profile } = useAuth();
@@ -15,13 +22,39 @@ export default function DashboardPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [rankingError, setRankingError] = useState("");
+  const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
 
-  const days = useMemo(() => getWeekDays(new Date()), []);
+  const days = currentWeek.days;
+  const weekRange = currentWeek.range;
+
+  useEffect(() => {
+    function syncCurrentWeek() {
+      setCurrentWeek((previousWeek) => {
+        const nextWeek = buildCurrentWeekState();
+        const previousStart = toDateInputValue(previousWeek.range.start);
+        const nextStart = toDateInputValue(nextWeek.range.start);
+
+        return previousStart === nextStart ? previousWeek : nextWeek;
+      });
+    }
+
+    syncCurrentWeek();
+
+    const intervalId = window.setInterval(syncCurrentWeek, 60 * 1000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   async function loadHaircuts() {
+    if (!user?.id) {
+      return;
+    }
+
     setLoading(true);
     setError("");
     setRankingError("");
+
+    const weekStart = toDateInputValue(weekRange.start);
+    const weekEnd = toDateInputValue(weekRange.end);
 
     try {
       const [
@@ -32,11 +65,13 @@ export default function DashboardPage() {
           .from("haircuts")
           .select("*")
           .eq("user_id", user.id)
-          .gte("haircut_date", days[0].date)
-          .lte("haircut_date", days[days.length - 1].date)
+          .gte("haircut_date", weekStart)
+          .lte("haircut_date", weekEnd)
           .order("haircut_date", { ascending: true })
           .order("created_at", { ascending: false }),
-        supabase.rpc("get_global_weekly_haircuts"),
+        supabase.rpc("get_global_weekly_haircuts", {
+          reference_date: weekStart,
+        }),
       ]);
 
       if (fetchError) {
@@ -48,7 +83,9 @@ export default function DashboardPage() {
       }
 
       setHaircuts(weeklyUserHaircuts || []);
-      setWeeklyRanking(getWeeklyBarberRanking(globalWeeklyHaircuts || []));
+      setWeeklyRanking(globalWeeklyHaircuts || []);
+
+      
     } catch (loadError) {
       setError(loadError.message || "No se pudieron cargar los cortes.");
     } finally {
@@ -57,10 +94,8 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    if (user?.id) {
-      loadHaircuts();
-    }
-  }, [user?.id]);
+    loadHaircuts();
+  }, [user?.id, weekRange.start.getTime()]);
 
   function buildHaircutPayload(values) {
     const commissionPercentage = Number(profile?.commission_percentage || 0);
@@ -161,7 +196,7 @@ export default function DashboardPage() {
               Resumen semanal
             </p>
             <h1 className="mt-2 text-3xl font-bold text-stone-900">Resumen semanal</h1>
-            <p className="mt-2 text-sm text-stone-600">Revisa lo cargado entre lunes y sabado.</p>
+            <p className="mt-2 text-sm text-stone-600">Revisa lo cargado entre lunes y domingo.</p>
           </div>
           <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-600">
             Comision actual: <strong>{Number(profile?.commission_percentage || 0)}%</strong>

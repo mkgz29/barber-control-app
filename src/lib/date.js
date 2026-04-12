@@ -1,4 +1,12 @@
-const WEEKDAY_NAMES = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const WEEKDAY_NAMES = [
+  "Lunes",
+  "Martes",
+  "Miercoles",
+  "Jueves",
+  "Viernes",
+  "Sabado",
+  "Domingo",
+];
 
 export function formatCurrency(value) {
   return new Intl.NumberFormat("es-AR", {
@@ -20,12 +28,14 @@ export function getStartOfWeek(date = new Date()) {
   const copy = new Date(date);
   const day = copy.getDay();
   const diff = day === 0 ? -6 : 1 - day;
+
   copy.setDate(copy.getDate() + diff);
   copy.setHours(0, 0, 0, 0);
+
   return copy;
 }
 
-export function getWeekDays(baseDate = new Date()) {
+export function getCurrentWeek(baseDate = new Date()) {
   const start = getStartOfWeek(baseDate);
 
   return WEEKDAY_NAMES.map((label, index) => {
@@ -43,8 +53,23 @@ export function getWeekDays(baseDate = new Date()) {
   });
 }
 
+export function getWeekDays(baseDate = new Date()) {
+  return getCurrentWeek(baseDate);
+}
+
+export function getWeekRange(baseDate = new Date()) {
+  const start = getStartOfWeek(baseDate);
+  const end = new Date(start);
+
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
 export function formatDateLabel(dateString) {
   const [year, month, day] = dateString.split("-").map(Number);
+
   return new Intl.DateTimeFormat("es-AR", {
     day: "numeric",
     month: "long",
@@ -72,7 +97,8 @@ export function getWeekLabelFromDate(dateString) {
   const date = new Date(year, month - 1, day);
   const weekStart = getStartOfWeek(date);
   const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 5);
+
+  weekEnd.setDate(weekStart.getDate() + 6);
 
   const startLabel = new Intl.DateTimeFormat("es-AR", {
     day: "numeric",

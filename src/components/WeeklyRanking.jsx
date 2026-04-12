@@ -1,4 +1,4 @@
-const PODIUM_BADGES = ["\u{1F947}", "\u{1F948}", "\u{1F949}"];
+const PODIUM_BADGES = ["🥇", "🥈", "🥉"];
 
 function PodiumCard({ entry, position }) {
   return (
@@ -8,7 +8,7 @@ function PodiumCard({ entry, position }) {
           <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
             Puesto #{position + 1}
           </p>
-          <h3 className="mt-2 text-xl font-bold text-stone-900">{entry.barberName}</h3>
+          <h3 className="mt-2 text-xl font-bold text-stone-900">{entry.barber_name}</h3>
         </div>
         <span className="text-3xl" aria-hidden="true">
           {PODIUM_BADGES[position]}
@@ -16,7 +16,7 @@ function PodiumCard({ entry, position }) {
       </div>
 
       <p className="mt-4 text-sm text-stone-500">Cortes registrados esta semana</p>
-      <p className="mt-1 text-3xl font-bold text-stone-900">{entry.totalCuts}</p>
+      <p className="mt-1 text-3xl font-bold text-stone-900">{entry.total_cuts}</p>
     </article>
   );
 }
@@ -29,17 +29,17 @@ function RankingRow({ entry, position }) {
           {position + 1}
         </span>
         <div>
-          <p className="font-semibold text-stone-900">{entry.barberName}</p>
+          <p className="font-semibold text-stone-900">{entry.barber_name}</p>
           <p className="text-sm text-stone-500">Buen ritmo esta semana</p>
         </div>
       </div>
 
-      <p className="text-sm font-semibold text-stone-700">{entry.totalCuts} cortes</p>
+      <p className="text-sm font-semibold text-stone-700">{entry.total_cuts} cortes</p>
     </li>
   );
 }
 
-export default function WeeklyRanking({ ranking }) {
+export default function WeeklyRanking({ ranking = [] }) {
   const podium = ranking.slice(0, 3);
   const remaining = ranking.slice(3);
 
@@ -71,7 +71,7 @@ export default function WeeklyRanking({ ranking }) {
         <div className="mt-6 space-y-6">
           <div className="grid gap-4 lg:grid-cols-3">
             {podium.map((entry, index) => (
-              <PodiumCard entry={entry} key={entry.barberName} position={index} />
+              <PodiumCard entry={entry} key={`${entry.barber_name}-${index}`} position={index} />
             ))}
           </div>
 
@@ -84,7 +84,7 @@ export default function WeeklyRanking({ ranking }) {
                 {remaining.map((entry, index) => (
                   <RankingRow
                     entry={entry}
-                    key={entry.barberName}
+                    key={`${entry.barber_name}-${index}`}
                     position={index + podium.length}
                   />
                 ))}
