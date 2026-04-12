@@ -27,7 +27,7 @@ export default function AppShell() {
         <header className="card overflow-hidden">
           <div className="bg-stone-900 px-5 py-4 text-white">
             <p className="text-xs uppercase tracking-[0.25em] text-brand-200">
-              Barber App
+              Agenda Barber
             </p>
             <div className="mt-2 flex items-start justify-between gap-4">
               <div>
