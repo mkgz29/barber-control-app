@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useRef, useState } from 
 import supabase from "../lib/supabaseClient";
 
 const BOOTSTRAP_TIMEOUT_MS = 8000;
+const AUTH_CALLBACK_PATH = "/auth/callback";
 
 const AuthContext = createContext(null);
 
@@ -199,9 +200,18 @@ export function AuthProvider({ children }) {
   async function signUp(email, password) {
     setInactiveMessage("");
 
+    // Also configure this URL in Supabase Dashboard:
+    // Authentication > URL Configuration > Site URL and Redirect URLs.
+    const emailRedirectTo =
+      import.meta.env.VITE_AUTH_REDIRECT_URL ||
+      `${window.location.origin}${AUTH_CALLBACK_PATH}`;
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo,
+      },
     });
 
     if (error) {

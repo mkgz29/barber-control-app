@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import agendaBarberLogo from "../assets/Logo de barbería con estilo clásico.png";
 import AuthStatusScreen from "../components/AuthStatusScreen";
@@ -20,6 +20,7 @@ export default function AuthPage() {
     retryBootstrap,
   } = useAuth();
 
+  const [authMode, setAuthMode] = useState("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState({
@@ -68,6 +69,28 @@ export default function AuthPage() {
     };
   }
 
+  function resetFeedback() {
+    setAuthError("");
+    setInfo("");
+  }
+
+  function handleModeChange(nextMode) {
+    if (nextMode === authMode) {
+      return;
+    }
+
+    setAuthMode(nextMode);
+    setErrors({
+      email: "",
+      password: "",
+    });
+    setTouched({
+      email: false,
+      password: false,
+    });
+    resetFeedback();
+  }
+
   function handleEmailChange(event) {
     const nextEmail = event.target.value;
     setEmail(nextEmail);
@@ -108,6 +131,20 @@ export default function AuthPage() {
     }));
   }
 
+  useEffect(() => {
+    if (location.state?.message) {
+      if (location.state.type === "error") {
+        setAuthError(location.state.message);
+        setInfo("");
+      } else {
+        setInfo(location.state.message);
+        setAuthError("");
+      }
+
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   if (authLoading) {
     return <LoadingScreen message="Estamos preparando tu cuenta..." />;
   }
@@ -127,7 +164,7 @@ export default function AuthPage() {
     return <Navigate to={redirectTo} replace />;
   }
 
-  async function handleLogin(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (loading) {
@@ -142,8 +179,7 @@ export default function AuthPage() {
       password: true,
     });
     setErrors(nextErrors);
-    setAuthError("");
-    setInfo("");
+    resetFeedback();
 
     if (hasEmptyRequiredFields || nextErrors.email || nextErrors.password) {
       return;
@@ -152,44 +188,22 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      await signIn(email.trim(), password);
-    } catch (submitError) {
-      setAuthError(submitError.message || "No se pudo ingresar.");
-    } finally {
-      setLoading(false);
-    }
-  }
+      if (authMode === "signin") {
+        await signIn(email.trim(), password);
+      } else {
+        const data = await signUp(email.trim(), password);
 
-  async function handleRegister() {
-    if (loading) {
-      return;
-    }
-
-    const nextErrors = validateForm();
-    const hasEmptyRequiredFields = !email.trim() || !password;
-
-    setTouched({
-      email: true,
-      password: true,
-    });
-    setErrors(nextErrors);
-    setAuthError("");
-    setInfo("");
-
-    if (hasEmptyRequiredFields || nextErrors.email || nextErrors.password) {
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const data = await signUp(email.trim(), password);
-
-      if (!data.session) {
-        setInfo("Revisá tu correo para confirmar la cuenta y después ingresá.");
+        if (!data.session) {
+          setInfo("Te enviamos un email para confirmar tu cuenta.");
+        } else {
+          setInfo("Cuenta creada correctamente.");
+        }
       }
     } catch (submitError) {
-      setAuthError(submitError.message || "No se pudo crear la cuenta.");
+      setAuthError(
+        submitError.message ||
+          (authMode === "signin" ? "No se pudo ingresar." : "No se pudo crear la cuenta.")
+      );
     } finally {
       setLoading(false);
     }
@@ -197,6 +211,7 @@ export default function AuthPage() {
 
   const showEmailError = touched.email && errors.email;
   const showPasswordError = touched.password && errors.password;
+  const isSignIn = authMode === "signin";
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
@@ -236,16 +251,52 @@ export default function AuthPage() {
         </section>
 
         <section className="flex min-h-[640px] items-center bg-white/85 px-6 py-10 sm:px-10">
-          <form className="mx-auto w-full max-w-md" onSubmit={handleLogin}>
+          <form className="mx-auto w-full max-w-md" onSubmit={handleSubmit}>
             <div className="mb-8">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
                 Agenda Barber
               </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight text-stone-950">
-                Ingresá a tu cuenta
+
+              <div className="relative mt-4 grid grid-cols-2 rounded-xl border border-stone-200 bg-stone-100 p-1">
+                <div
+                  aria-hidden="true"
+                  className={`absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-lg bg-white shadow-[0_8px_24px_rgba(28,25,23,0.12)] transition-all duration-300 ease-out ${
+                    isSignIn ? "left-1" : "left-[calc(50%+0.125rem)]"
+                  }`}
+                />
+                <button
+                  aria-pressed={isSignIn}
+                  className={`relative z-10 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                    isSignIn
+                      ? "text-stone-900"
+                      : "text-stone-500 hover:text-stone-700"
+                  }`}
+                  onClick={() => handleModeChange("signin")}
+                  type="button"
+                >
+                  Ingresar
+                </button>
+                <button
+                  aria-pressed={!isSignIn}
+                  className={`relative z-10 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                    !isSignIn
+                      ? "text-stone-900"
+                      : "text-stone-500 hover:text-stone-700"
+                  }`}
+                  onClick={() => handleModeChange("signup")}
+                  type="button"
+                >
+                  Registrarse
+                </button>
+              </div>
+
+              <h2 className="mt-5 text-3xl font-bold tracking-tight text-stone-950">
+                {isSignIn ? "Ingresá a tu cuenta" : "Creá tu cuenta"}
               </h2>
               <p className="mt-3 text-sm leading-6 text-stone-600">
-                Accedé con tu email y contraseña para gestionar tu jornada.
+                {isSignIn
+                  ? "Accedé con tu email y contraseña para gestionar tu jornada."
+                  : "Completá tu email y contraseña para registrarte y confirmar tu cuenta por email."}
               </p>
             </div>
 
@@ -322,19 +373,15 @@ export default function AuthPage() {
                 </p>
               )}
 
-              <div className="grid gap-3 pt-2 sm:grid-cols-2">
-                <button className="btn-primary w-full" disabled={loading} type="submit">
-                  {loading ? "Ingresando..." : "Ingresar"}
-                </button>
-                <button
-                  className="btn-secondary w-full border-stone-400 text-stone-800 hover:border-stone-500"
-                  disabled={loading}
-                  onClick={handleRegister}
-                  type="button"
-                >
-                  {loading ? "Procesando..." : "Registrarse"}
-                </button>
-              </div>
+              <button className="btn-primary w-full" disabled={loading} type="submit">
+                {loading
+                  ? isSignIn
+                    ? "Ingresando..."
+                    : "Creando cuenta..."
+                  : isSignIn
+                    ? "Ingresar"
+                    : "Registrarme"}
+              </button>
             </div>
           </form>
         </section>
