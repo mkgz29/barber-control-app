@@ -214,8 +214,8 @@ export default function AuthPage() {
   const isSignIn = authMode === "signin";
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4 py-8 sm:px-6">
-      <div className="grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/60 bg-white/70 shadow-warm backdrop-blur lg:grid-cols-[1.08fr_0.92fr]">
+    <div className="min-h-screen bg-stone-950 px-4 py-4 sm:px-6 sm:py-8 lg:flex lg:items-center lg:justify-center lg:bg-transparent">
+      <div className="grid w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-stone-950 shadow-warm lg:grid-cols-[1.08fr_0.92fr] lg:border-white/60 lg:bg-white/70 lg:backdrop-blur">
         <section className="relative hidden min-h-[640px] overflow-hidden bg-stone-950 px-10 py-12 text-white lg:block">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.24),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(245,158,11,0.18),transparent_28%)]" />
           <div className="relative flex h-full flex-col justify-between">
@@ -250,138 +250,161 @@ export default function AuthPage() {
           </div>
         </section>
 
-        <section className="flex min-h-[640px] items-center bg-white/85 px-6 py-10 sm:px-10">
-          <form className="mx-auto w-full max-w-md" onSubmit={handleSubmit}>
-            <div className="mb-8">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-                Agenda Barber
-              </p>
+        <section className="relative flex min-h-screen items-start bg-transparent px-0 py-0 lg:min-h-[640px] lg:items-center lg:bg-white/85 lg:px-10 lg:py-10">
+          <div className="absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top,rgba(251,191,36,0.24),transparent_54%),linear-gradient(180deg,rgba(28,25,23,0.98),rgba(28,25,23,0.88))] lg:hidden" />
 
-              <div className="relative mt-4 grid grid-cols-2 rounded-xl border border-stone-200 bg-stone-100 p-1">
-                <div
-                  aria-hidden="true"
-                  className={`absolute inset-y-1 w-[calc(50%-0.125rem)] rounded-lg bg-white shadow-[0_8px_24px_rgba(28,25,23,0.12)] transition-all duration-300 ease-out ${
-                    isSignIn ? "left-1" : "left-[calc(50%+0.125rem)]"
-                  }`}
-                />
-                <button
-                  aria-pressed={isSignIn}
-                  className={`relative z-10 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                    isSignIn
-                      ? "text-stone-900"
-                      : "text-stone-500 hover:text-stone-700"
-                  }`}
-                  onClick={() => handleModeChange("signin")}
-                  type="button"
-                >
-                  Ingresar
-                </button>
-                <button
-                  aria-pressed={!isSignIn}
-                  className={`relative z-10 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                    !isSignIn
-                      ? "text-stone-900"
-                      : "text-stone-500 hover:text-stone-700"
-                  }`}
-                  onClick={() => handleModeChange("signup")}
-                  type="button"
-                >
-                  Registrarse
-                </button>
+          <form
+            className="relative mx-auto flex w-full max-w-md flex-col gap-5 pt-5 pb-6 sm:pt-6 sm:pb-8 lg:block lg:pt-0 lg:pb-0"
+            onSubmit={handleSubmit}
+          >
+            <div className="rounded-[1.75rem] border border-white/10 bg-white/[0.04] p-5 text-white shadow-[0_18px_40px_rgba(0,0,0,0.28)] backdrop-blur-sm sm:p-6 lg:hidden">
+              <div className="flex items-center gap-3">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 p-2 shadow-[0_12px_30px_rgba(0,0,0,0.24)]">
+                  <img
+                    alt="Logo de Agenda Barber"
+                    className="h-full w-full object-contain"
+                    src={agendaBarberLogo}
+                  />
+                </div>
+                <div>
+                  <p className="text-[0.7rem] font-semibold uppercase tracking-[0.34em] text-brand-200/90">
+                    AGENDA BARBER
+                  </p>
+                  <p className="mt-1 text-sm leading-6 text-stone-200">
+                    Controlá tus cortes, ingresos y rendimiento.
+                  </p>
+                </div>
               </div>
-
-              <h2 className="mt-5 text-3xl font-bold tracking-tight text-stone-950">
-                {isSignIn ? "Ingresá a tu cuenta" : "Creá tu cuenta"}
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-stone-600">
-                {isSignIn
-                  ? "Accedé con tu email y contraseña para gestionar tu jornada."
-                  : "Completá tu email y contraseña para registrarte y confirmar tu cuenta por email."}
-              </p>
             </div>
 
-            <div className="space-y-5">
-              <div>
-                <label
-                  className="mb-2 block text-sm font-semibold text-stone-800"
-                  htmlFor="email"
-                >
-                  Email
-                </label>
-                <input
-                  aria-describedby={showEmailError ? "email-error" : undefined}
-                  aria-invalid={Boolean(showEmailError)}
-                  className={`input ${
-                    showEmailError
-                      ? "!border-red-400 !bg-red-50/70 !ring-2 !ring-red-100"
-                      : "hover:border-stone-300"
-                  }`}
-                  id="email"
-                  name="email"
-                  placeholder="tuemail@ejemplo.com"
-                  type="email"
-                  value={email}
-                  onBlur={handleBlur}
-                  onChange={handleEmailChange}
-                />
-                {showEmailError && (
-                  <p className="mt-2 text-sm text-red-600" id="email-error" role="alert">
-                    {errors.email}
-                  </p>
-                )}
+            <div className="rounded-[1.75rem] border border-stone-200/90 bg-white px-4 py-5 shadow-[0_24px_60px_rgba(12,10,9,0.2)] sm:px-6 sm:py-6 lg:rounded-none lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none">
+              <div className="mb-6 sm:mb-7">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-700 sm:text-sm sm:tracking-[0.25em]">
+                  Agenda Barber
+                </p>
+
+                <div className="relative mt-4 grid grid-cols-2 rounded-2xl border border-stone-200 bg-stone-100/90 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+                  <div
+                    aria-hidden="true"
+                    className={`absolute inset-y-1.5 w-[calc(50%-0.375rem)] rounded-[0.875rem] bg-stone-950 shadow-[0_10px_24px_rgba(28,25,23,0.22),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-300 ease-out ${
+                      isSignIn ? "left-1.5" : "left-[calc(50%+0.125rem)]"
+                    }`}
+                  />
+                  <button
+                    aria-pressed={isSignIn}
+                    className={`relative z-10 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                      isSignIn ? "text-white" : "text-stone-600 hover:text-stone-800"
+                    }`}
+                    onClick={() => handleModeChange("signin")}
+                    type="button"
+                  >
+                    Ingresar
+                  </button>
+                  <button
+                    aria-pressed={!isSignIn}
+                    className={`relative z-10 rounded-xl px-4 py-3 text-sm font-semibold transition-all duration-200 ${
+                      !isSignIn ? "text-white" : "text-stone-600 hover:text-stone-800"
+                    }`}
+                    onClick={() => handleModeChange("signup")}
+                    type="button"
+                  >
+                    Registrarse
+                  </button>
+                </div>
+
+                <h2 className="mt-5 text-[1.8rem] font-bold tracking-tight text-stone-950 sm:text-3xl">
+                  {isSignIn ? "Ingresá a tu cuenta" : "Creá tu cuenta"}
+                </h2>
+                <p className="mt-2.5 text-sm leading-6 text-stone-600 sm:mt-3">
+                  {isSignIn
+                    ? "Accedé con tu email y contraseña para gestionar tu jornada."
+                    : "Completá tu email y contraseña para registrarte y confirmar tu cuenta por email."}
+                </p>
               </div>
 
-              <div>
-                <label
-                  className="mb-2 block text-sm font-semibold text-stone-800"
-                  htmlFor="password"
-                >
-                  Contraseña
-                </label>
-                <input
-                  aria-describedby={showPasswordError ? "password-error" : undefined}
-                  aria-invalid={Boolean(showPasswordError)}
-                  className={`input ${
-                    showPasswordError
-                      ? "!border-red-400 !bg-red-50/70 !ring-2 !ring-red-100"
-                      : "hover:border-stone-300"
-                  }`}
-                  id="password"
-                  name="password"
-                  placeholder="Mínimo 6 caracteres"
-                  type="password"
-                  value={password}
-                  onBlur={handleBlur}
-                  onChange={handlePasswordChange}
-                />
-                {showPasswordError && (
-                  <p className="mt-2 text-sm text-red-600" id="password-error" role="alert">
-                    {errors.password}
+              <div className="space-y-4 sm:space-y-5">
+                <div>
+                  <label
+                    className="mb-2 block text-sm font-semibold tracking-[0.01em] text-stone-800"
+                    htmlFor="email"
+                  >
+                    Email
+                  </label>
+                  <input
+                    aria-describedby={showEmailError ? "email-error" : undefined}
+                    aria-invalid={Boolean(showEmailError)}
+                    className={`input ${
+                      showEmailError
+                        ? "!border-red-400 !bg-red-50/70 !ring-2 !ring-red-100"
+                        : "hover:border-stone-300"
+                    }`}
+                    id="email"
+                    name="email"
+                    placeholder="tuemail@ejemplo.com"
+                    type="email"
+                    value={email}
+                    onBlur={handleBlur}
+                    onChange={handleEmailChange}
+                  />
+                  {showEmailError && (
+                    <p className="mt-2 text-sm text-red-600" id="email-error" role="alert">
+                      {errors.email}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    className="mb-2 block text-sm font-semibold tracking-[0.01em] text-stone-800"
+                    htmlFor="password"
+                  >
+                    Contraseña
+                  </label>
+                  <input
+                    aria-describedby={showPasswordError ? "password-error" : undefined}
+                    aria-invalid={Boolean(showPasswordError)}
+                    className={`input ${
+                      showPasswordError
+                        ? "!border-red-400 !bg-red-50/70 !ring-2 !ring-red-100"
+                        : "hover:border-stone-300"
+                    }`}
+                    id="password"
+                    name="password"
+                    placeholder="Mínimo 6 caracteres"
+                    type="password"
+                    value={password}
+                    onBlur={handleBlur}
+                    onChange={handlePasswordChange}
+                  />
+                  {showPasswordError && (
+                    <p className="mt-2 text-sm text-red-600" id="password-error" role="alert">
+                      {errors.password}
+                    </p>
+                  )}
+                </div>
+
+                {inactiveMessage && <p className="text-sm text-amber-700">{inactiveMessage}</p>}
+                {authError && (
+                  <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {authError}
                   </p>
                 )}
+                {info && (
+                  <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                    {info}
+                  </p>
+                )}
+
+                <button className="btn-primary mt-1 w-full" disabled={loading} type="submit">
+                  {loading
+                    ? isSignIn
+                      ? "Ingresando..."
+                      : "Creando cuenta..."
+                    : isSignIn
+                      ? "Ingresar"
+                      : "Registrarme"}
+                </button>
               </div>
-
-              {inactiveMessage && <p className="text-sm text-amber-700">{inactiveMessage}</p>}
-              {authError && (
-                <p className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {authError}
-                </p>
-              )}
-              {info && (
-                <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                  {info}
-                </p>
-              )}
-
-              <button className="btn-primary w-full" disabled={loading} type="submit">
-                {loading
-                  ? isSignIn
-                    ? "Ingresando..."
-                    : "Creando cuenta..."
-                  : isSignIn
-                    ? "Ingresar"
-                    : "Registrarme"}
-              </button>
             </div>
           </form>
         </section>
