@@ -4,6 +4,7 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null unique,
   full_name text,
+  barbershop_name text,
   role text not null default 'barber' check (role in ('admin', 'barber')),
   is_active boolean not null default true,
   commission_percentage numeric(5,2) not null default 45,
@@ -55,7 +56,7 @@ revoke all on table public.haircuts from anon, authenticated;
 
 grant usage on schema public to authenticated;
 grant select, insert on table public.profiles to authenticated;
-grant update (full_name, email) on table public.profiles to authenticated;
+grant update (full_name, barbershop_name, email) on table public.profiles to authenticated;
 grant select, insert on table public.haircuts to authenticated;
 
 drop policy if exists "profiles_select_own_or_admin" on public.profiles;
@@ -113,8 +114,8 @@ with check (auth.uid() = user_id);
 create or replace function public.get_global_weekly_haircuts(reference_date date default current_date)
 returns table (
   barber_name text,
-  price numeric,
-  haircut_date date
+  barbershop_name text,
+  total_cuts bigint
 )
 language sql
 security definer
@@ -122,22 +123,27 @@ set search_path = public
 as $$
   select
     coalesce(nullif(trim(profiles.full_name), ''), 'Sin nombre') as barber_name,
-    haircuts.price,
-    haircuts.haircut_date
+    nullif(trim(profiles.barbershop_name), '') as barbershop_name,
+    count(*)::bigint as total_cuts
   from public.haircuts
   join public.profiles on profiles.id = haircuts.user_id
   where profiles.is_active = true
     and haircuts.haircut_date >= date_trunc('week', reference_date::timestamp)::date
     and haircuts.haircut_date < (date_trunc('week', reference_date::timestamp)::date + interval '7 day')::date
-  order by haircuts.haircut_date asc, haircuts.created_at desc;
+  group by 1, 2
+  order by total_cuts desc, barber_name asc
+  limit 5;
 $$;
 
 grant execute on function public.get_global_weekly_haircuts(date) to authenticated;
 
+drop function if exists public.admin_update_profile(uuid, boolean, numeric);
+
 create or replace function public.admin_update_profile(
   target_profile_id uuid,
   new_is_active boolean,
-  new_commission_percentage numeric
+  new_commission_percentage numeric,
+  new_barbershop_name text default null
 )
 returns void
 language plpgsql
@@ -161,9 +167,13 @@ begin
   update public.profiles
   set
     is_active = coalesce(new_is_active, is_active),
-    commission_percentage = coalesce(new_commission_percentage, commission_percentage)
+    commission_percentage = coalesce(new_commission_percentage, commission_percentage),
+    barbershop_name = case
+      when new_barbershop_name is null then null
+      else nullif(trim(new_barbershop_name), '')
+    end
   where id = target_profile_id;
 end;
 $$;
 
-grant execute on function public.admin_update_profile(uuid, boolean, numeric) to authenticated;
+grant execute on function public.admin_update_profile(uuid, boolean, numeric, text) to authenticated;

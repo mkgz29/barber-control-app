@@ -7,11 +7,13 @@ export default function ProfileSetupPage() {
   const navigate = useNavigate();
   const { user, profile, setProfile } = useAuth();
   const [fullName, setFullName] = useState("");
+  const [barbershopName, setBarbershopName] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
     setFullName(profile?.full_name || "");
+    setBarbershopName(profile?.barbershop_name || "");
   }, [profile]);
 
   async function handleSubmit(event) {
@@ -24,7 +26,7 @@ export default function ProfileSetupPage() {
     setError("");
 
     if (!fullName.trim()) {
-      setError("Ingresá tu nombre completo.");
+      setError("Ingresa tu nombre completo.");
       return;
     }
 
@@ -32,6 +34,7 @@ export default function ProfileSetupPage() {
 
     try {
       const fullNameValue = fullName.trim();
+      const barbershopNameValue = barbershopName.trim();
       const { data, error: upsertError } = await supabase
         .from("profiles")
         .upsert(
@@ -39,6 +42,7 @@ export default function ProfileSetupPage() {
             id: user.id,
             email: user.email,
             full_name: fullNameValue,
+            barbershop_name: barbershopNameValue || null,
           },
           { onConflict: "id" }
         )
@@ -64,9 +68,9 @@ export default function ProfileSetupPage() {
         <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
           Perfil
         </p>
-        <h1 className="mt-2 text-3xl font-bold text-stone-900">Completá tu perfil</h1>
+        <h1 className="mt-2 text-3xl font-bold text-stone-900">Completa tu perfil</h1>
         <p className="mt-2 text-sm leading-6 text-stone-600">
-          Este dato se usa para identificar tu cuenta dentro de la barbería.
+          Estos datos se usan para identificar tu cuenta y mostrarte correctamente en el ranking.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
@@ -74,16 +78,29 @@ export default function ProfileSetupPage() {
             <label className="mb-1 block text-sm font-medium text-stone-700">Nombre completo</label>
             <input
               className="input"
-              placeholder="Ej: Juan Pérez"
+              placeholder="Ej: Juan Perez"
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
               disabled={saving}
             />
           </div>
 
+          <div>
+            <label className="mb-1 block text-sm font-medium text-stone-700">
+              Nombre de tu barberia
+            </label>
+            <input
+              className="input"
+              placeholder="Ej: Barberia Chinos"
+              value={barbershopName}
+              onChange={(event) => setBarbershopName(event.target.value)}
+              disabled={saving}
+            />
+          </div>
+
           {profile?.commission_percentage != null && (
             <div className="rounded-2xl bg-brand-50 p-4 text-sm text-stone-700">
-              Tu comisión actual es de <strong>{Number(profile.commission_percentage)}%</strong>.
+              Tu comision actual es de <strong>{Number(profile.commission_percentage)}%</strong>.
             </div>
           )}
 

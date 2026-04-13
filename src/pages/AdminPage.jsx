@@ -10,6 +10,14 @@ function normalizeCommission(value) {
   return String(value);
 }
 
+function normalizeBarbershopName(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  return String(value);
+}
+
 function AdminUserCard({ user, saving, onFieldChange, onSave }) {
   const commissionValue = Number(user.commission_percentage);
   const hasValidCommission =
@@ -47,6 +55,12 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
 
           <div className="space-y-1 text-sm text-stone-600">
             <p>{user.email}</p>
+            <p title={user.barbershop_name || ""}>
+              Barberia:{" "}
+              <span className={user.barbershop_name?.trim() ? "text-stone-700" : "text-stone-400 italic"}>
+                {user.barbershop_name?.trim() || "Sin cargar"}
+              </span>
+            </p>
             <p>
               Alta:{" "}
               {user.created_at
@@ -56,7 +70,7 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:min-w-[340px]">
+        <div className="grid gap-4 lg:min-w-[380px] lg:max-w-[420px] lg:flex-1">
           <label className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
             <span className="text-sm font-semibold text-stone-800">Usuario activo</span>
             <input
@@ -70,9 +84,26 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
           <div>
             <label
               className="mb-2 block text-sm font-semibold text-stone-800"
+              htmlFor={`barbershop-${user.id}`}
+            >
+              Barberia
+            </label>
+            <input
+              className="input"
+              id={`barbershop-${user.id}`}
+              placeholder="Ej: Barberia Chinos"
+              type="text"
+              value={user.barbershop_name}
+              onChange={(event) => onFieldChange(user.id, "barbershop_name", event.target.value)}
+            />
+          </div>
+
+          <div>
+            <label
+              className="mb-2 block text-sm font-semibold text-stone-800"
               htmlFor={`commission-${user.id}`}
             >
-              Porcentaje de comisión
+              Porcentaje de comision
             </label>
             <div className="relative">
               <input
@@ -106,7 +137,7 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
             <p className="text-sm text-stone-500">Sin cambios pendientes.</p>
           )}
           {user.hasChanges && !user.validationError && (
-            <p className="text-sm text-amber-700">Tenés cambios sin guardar.</p>
+            <p className="text-sm text-amber-700">Tenes cambios sin guardar.</p>
           )}
           {user.saveMessage && (
             <p
@@ -128,10 +159,14 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
 }
 
 function mapUserToEditableState(user) {
+  const barbershopName = normalizeBarbershopName(user.barbershop_name);
+
   return {
     ...user,
+    barbershop_name: barbershopName,
     commission_percentage: normalizeCommission(user.commission_percentage),
     original_is_active: user.is_active,
+    original_barbershop_name: barbershopName,
     original_commission_percentage: normalizeCommission(user.commission_percentage),
     hasChanges: false,
     validationError: "",
@@ -148,7 +183,7 @@ export default function AdminPage() {
 
   function getCommissionValidationMessage(value) {
     if (value === "") {
-      return "Ingresá un porcentaje entre 0 y 100.";
+      return "Ingresa un porcentaje entre 0 y 100.";
     }
 
     const numericValue = Number(value);
@@ -200,7 +235,7 @@ export default function AdminPage() {
 
         const nextUser = {
           ...user,
-          [field]: field === "commission_percentage" ? value : value,
+          [field]: value,
           saveMessage: null,
         };
 
@@ -211,6 +246,8 @@ export default function AdminPage() {
 
         const hasChanges =
           nextUser.is_active !== nextUser.original_is_active ||
+          normalizeBarbershopName(nextUser.barbershop_name).trim() !==
+            normalizeBarbershopName(nextUser.original_barbershop_name).trim() ||
           normalizeCommission(nextUser.commission_percentage) !==
             nextUser.original_commission_percentage;
 
@@ -237,6 +274,7 @@ export default function AdminPage() {
         .update({
           is_active: targetUser.is_active,
           commission_percentage: Number(targetUser.commission_percentage),
+          barbershop_name: targetUser.barbershop_name.trim() || null,
         })
         .eq("id", userId);
 
@@ -250,9 +288,13 @@ export default function AdminPage() {
             return user;
           }
 
+          const normalizedBarbershopName = normalizeBarbershopName(user.barbershop_name).trim();
+
           return {
             ...user,
+            barbershop_name: normalizedBarbershopName,
             original_is_active: user.is_active,
+            original_barbershop_name: normalizedBarbershopName,
             original_commission_percentage: normalizeCommission(user.commission_percentage),
             hasChanges: false,
             validationError: "",
@@ -298,10 +340,10 @@ export default function AdminPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
               Agenda Barber
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-stone-900">Administración de usuarios</h1>
+            <h1 className="mt-2 text-3xl font-bold text-stone-900">Administracion de usuarios</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
-              Gestioná el acceso del equipo, el estado de cada cuenta y la comisión asignada a
-              cada perfil.
+              Gestiona el acceso del equipo, el estado de cada cuenta, la barberia y la comision
+              asignada a cada perfil.
             </p>
           </div>
 
