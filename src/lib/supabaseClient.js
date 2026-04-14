@@ -9,7 +9,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 const supabase = createClient(
   supabaseUrl || "https://ejemplo.supabase.co",
-  supabaseAnonKey || "clave-anonima"
+  supabaseAnonKey || "clave-anonima",
+  {
+    auth: {
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: "pkce",
+      persistSession: true,
+    },
+  }
 );
 
 export default supabase;

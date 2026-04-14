@@ -1,8 +1,17 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  checkEmailActionGuard,
+  getAuthRedirectUrl,
+  logAuthEmailEvent,
+  mapAuthError,
+  registerEmailActionAttempt,
+  validateEmail,
+} from "../lib/emailAuth";
 import supabase from "../lib/supabaseClient";
 
 const BOOTSTRAP_TIMEOUT_MS = 8000;
 const AUTH_CALLBACK_PATH = "/auth/callback";
+const UPDATE_PASSWORD_PATH = "/auth/update-password";
 
 const AuthContext = createContext(null);
 
@@ -19,6 +28,7 @@ export function AuthProvider({ children }) {
 
   const mountedRef = useRef(false);
   const sessionRef = useRef(null);
+  const actionLocksRef = useRef({});
   const bootstrapRef = useRef({
     inFlight: false,
     promise: null,
@@ -184,41 +194,204 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  async function runGuardedEmailAction(flow, email, callback, options = {}) {
+    const { cooldownSeconds = 60, maxAttempts = 3, windowMs = 15 * 60 * 1000 } = options;
+    const { email: normalizedEmail, error: emailError } = validateEmail(email, { required: true });
+
+    if (emailError) {
+      throw new Error(emailError);
+    }
+
+    if (actionLocksRef.current[flow]) {
+      throw new Error("Ya estamos procesando esa solicitud.");
+    }
+
+    const guard = checkEmailActionGuard(flow, normalizedEmail, {
+      cooldownSeconds,
+      maxAttempts,
+      windowMs,
+    });
+
+    if (!guard.allowed) {
+      throw new Error(guard.error);
+    }
+
+    actionLocksRef.current[flow] = true;
+
+    try {
+      const functionName = import.meta.env.VITE_AUTH_EMAIL_GUARD_FUNCTION;
+
+      if (functionName) {
+        const backendFlowMap = {
+          signup: "signup",
+          "magic-link": "magic_link",
+          "password-reset": "password_reset",
+          "resend-confirmation": "resend_confirmation",
+        };
+
+        const { data: guardData, error: guardError } = await supabase.functions.invoke(functionName, {
+          body: {
+            flow: backendFlowMap[flow] ?? flow,
+            email: normalizedEmail,
+          },
+        });
+
+        if (guardError) {
+          throw new Error("No pudimos validar el envío en el backend.");
+        }
+
+        if (!guardData?.allowed) {
+          throw new Error(guardData?.message || "El envío fue bloqueado por seguridad.");
+        }
+      }
+
+      registerEmailActionAttempt(flow, normalizedEmail, {
+        cooldownSeconds,
+        windowMs,
+      });
+
+      logAuthEmailEvent(`${flow}.requested`, { email: normalizedEmail });
+      const result = await callback(normalizedEmail);
+      logAuthEmailEvent(`${flow}.succeeded`, { email: normalizedEmail });
+      return result;
+    } catch (error) {
+      logAuthEmailEvent(`${flow}.failed`, {
+        email: normalizedEmail,
+        message: error?.message ?? "",
+      });
+      throw new Error(mapAuthError(error, flow));
+    } finally {
+      delete actionLocksRef.current[flow];
+    }
+  }
+
   async function signIn(email, password) {
     setInactiveMessage("");
 
+    const { email: normalizedEmail, error: emailError } = validateEmail(email, { required: true });
+
+    if (emailError) {
+      throw new Error(emailError);
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
     if (error) {
-      throw error;
+      throw new Error(mapAuthError(error, "signin"));
     }
   }
 
   async function signUp(email, password) {
     setInactiveMessage("");
 
-    // Also configure this URL in Supabase Dashboard:
-    // Authentication > URL Configuration > Site URL and Redirect URLs.
-    const emailRedirectTo =
-      import.meta.env.VITE_AUTH_REDIRECT_URL ||
-      `${window.location.origin}${AUTH_CALLBACK_PATH}`;
-
-    const { data, error } = await supabase.auth.signUp({
+    return runGuardedEmailAction(
+      "signup",
       email,
-      password,
-      options: {
-        emailRedirectTo,
+      async (normalizedEmail) => {
+        const { data, error } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: {
+            emailRedirectTo: getAuthRedirectUrl(AUTH_CALLBACK_PATH),
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        return data;
       },
+      {
+        cooldownSeconds: 90,
+        maxAttempts: 3,
+      }
+    );
+  }
+
+  async function resendConfirmation(email) {
+    return runGuardedEmailAction(
+      "resend-confirmation",
+      email,
+      async (normalizedEmail) => {
+        const { error } = await supabase.auth.resend({
+          type: "signup",
+          email: normalizedEmail,
+          options: {
+            emailRedirectTo: getAuthRedirectUrl(AUTH_CALLBACK_PATH),
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+      },
+      {
+        cooldownSeconds: 120,
+        maxAttempts: 3,
+      }
+    );
+  }
+
+  async function sendMagicLink(email) {
+    return runGuardedEmailAction(
+      "magic-link",
+      email,
+      async (normalizedEmail) => {
+        const { error } = await supabase.auth.signInWithOtp({
+          email: normalizedEmail,
+          options: {
+            emailRedirectTo: getAuthRedirectUrl(AUTH_CALLBACK_PATH),
+            shouldCreateUser: false,
+          },
+        });
+
+        if (error) {
+          throw error;
+        }
+      },
+      {
+        cooldownSeconds: 90,
+        maxAttempts: 3,
+      }
+    );
+  }
+
+  async function sendPasswordReset(email) {
+    return runGuardedEmailAction(
+      "password-reset",
+      email,
+      async (normalizedEmail) => {
+        const { error } = await supabase.auth.resetPasswordForEmail(normalizedEmail, {
+          redirectTo: getAuthRedirectUrl(UPDATE_PASSWORD_PATH),
+        });
+
+        if (error) {
+          throw error;
+        }
+      },
+      {
+        cooldownSeconds: 120,
+        maxAttempts: 3,
+      }
+    );
+  }
+
+  async function updatePassword(password) {
+    if (!password || password.length < 6) {
+      throw new Error("La contraseña debe tener al menos 6 caracteres.");
+    }
+
+    const { error } = await supabase.auth.updateUser({
+      password,
     });
 
     if (error) {
-      throw error;
+      throw new Error(mapAuthError(error, "update-password"));
     }
-
-    return data;
   }
 
   async function signOut() {
@@ -243,6 +416,10 @@ export function AuthProvider({ children }) {
       inactiveMessage,
       signIn,
       signUp,
+      resendConfirmation,
+      sendMagicLink,
+      sendPasswordReset,
+      updatePassword,
       signOut,
       setProfile,
       retryBootstrap,

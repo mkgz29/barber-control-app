@@ -1,11 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import agendaBarberLogo from "../assets/Logo de barbería con estilo clásico.png";
 import AuthStatusScreen from "../components/AuthStatusScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { normalizeEmail, validateEmail } from "../lib/emailAuth";
 
 export default function AuthPage() {
   const location = useLocation();
@@ -17,6 +16,9 @@ export default function AuthPage() {
     inactiveMessage,
     signIn,
     signUp,
+    resendConfirmation,
+    sendMagicLink,
+    sendPasswordReset,
     retryBootstrap,
   } = useAuth();
 
@@ -27,6 +29,7 @@ export default function AuthPage() {
     email: "",
     password: "",
   });
+  const [emailSuggestion, setEmailSuggestion] = useState("");
   const [touched, setTouched] = useState({
     email: false,
     password: false,
@@ -34,21 +37,20 @@ export default function AuthPage() {
   const [authError, setAuthError] = useState("");
   const [info, setInfo] = useState("");
   const [loading, setLoading] = useState(false);
+  const [secondaryLoading, setSecondaryLoading] = useState("");
 
   const redirectTo =
     !profile?.full_name?.trim() && session
       ? "/perfil"
       : location.state?.from?.pathname || "/semana";
 
+  const isSignIn = authMode === "signin";
+
   function validateField(name, value) {
-    const trimmedValue = value.trim();
-
     if (name === "email") {
-      if (!trimmedValue) {
-        return "";
-      }
-
-      return EMAIL_REGEX.test(trimmedValue) ? "" : "Email inválido";
+      const validation = validateEmail(value);
+      setEmailSuggestion(validation.suggestion);
+      return validation.error;
     }
 
     if (name === "password") {
@@ -88,6 +90,8 @@ export default function AuthPage() {
       email: false,
       password: false,
     });
+    setPassword("");
+    setEmailSuggestion("");
     resetFeedback();
   }
 
@@ -96,10 +100,13 @@ export default function AuthPage() {
     setEmail(nextEmail);
     setAuthError("");
 
+    const validation = validateEmail(nextEmail);
+    setEmailSuggestion(validation.suggestion);
+
     if (touched.email) {
       setErrors((currentErrors) => ({
         ...currentErrors,
-        email: validateField("email", nextEmail),
+        email: validation.error,
       }));
     }
   }
@@ -129,6 +136,10 @@ export default function AuthPage() {
       ...currentErrors,
       [name]: validateField(name, value),
     }));
+
+    if (name === "email") {
+      setEmail(normalizeEmail(value));
+    }
   }
 
   useEffect(() => {
@@ -144,6 +155,8 @@ export default function AuthPage() {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
+
+  const canSubmit = useMemo(() => !loading && !secondaryLoading, [loading, secondaryLoading]);
 
   if (authLoading) {
     return <LoadingScreen message="Estamos preparando tu cuenta..." />;
@@ -164,10 +177,31 @@ export default function AuthPage() {
     return <Navigate to={redirectTo} replace />;
   }
 
+  function ensureEmailReady() {
+    const validation = validateEmail(email, { required: true });
+
+    setTouched((currentTouched) => ({
+      ...currentTouched,
+      email: true,
+    }));
+    setErrors((currentErrors) => ({
+      ...currentErrors,
+      email: validation.error,
+    }));
+    setEmailSuggestion(validation.suggestion);
+
+    if (!validation.isValid) {
+      throw new Error(validation.error);
+    }
+
+    setEmail(validation.email);
+    return validation.email;
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (loading) {
+    if (!canSubmit) {
       return;
     }
 
@@ -188,13 +222,17 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
+      const normalizedEmail = ensureEmailReady();
+
       if (authMode === "signin") {
-        await signIn(email.trim(), password);
+        await signIn(normalizedEmail, password);
       } else {
-        const data = await signUp(email.trim(), password);
+        const data = await signUp(normalizedEmail, password);
 
         if (!data.session) {
-          setInfo("Te enviamos un email para confirmar tu cuenta.");
+          setInfo(
+            "Te enviamos un email para confirmar tu cuenta. Revisá tu bandeja y spam."
+          );
         } else {
           setInfo("Cuenta creada correctamente.");
         }
@@ -209,9 +247,39 @@ export default function AuthPage() {
     }
   }
 
+  async function runSecondaryAction(action, successMessage) {
+    if (!canSubmit) {
+      return;
+    }
+
+    resetFeedback();
+    setSecondaryLoading(action);
+
+    try {
+      const normalizedEmail = ensureEmailReady();
+
+      if (action === "magic-link") {
+        await sendMagicLink(normalizedEmail);
+      }
+
+      if (action === "password-reset") {
+        await sendPasswordReset(normalizedEmail);
+      }
+
+      if (action === "resend-confirmation") {
+        await resendConfirmation(normalizedEmail);
+      }
+
+      setInfo(successMessage);
+    } catch (actionError) {
+      setAuthError(actionError.message || "No pudimos completar la acción.");
+    } finally {
+      setSecondaryLoading("");
+    }
+  }
+
   const showEmailError = touched.email && errors.email;
   const showPasswordError = touched.password && errors.password;
-  const isSignIn = authMode === "signin";
 
   return (
     <div className="min-h-screen bg-stone-950 px-4 py-4 sm:px-6 sm:py-8 lg:flex lg:items-center lg:justify-center lg:bg-transparent">
@@ -317,8 +385,8 @@ export default function AuthPage() {
                 </h2>
                 <p className="mt-2.5 text-sm leading-6 text-stone-600 sm:mt-3">
                   {isSignIn
-                    ? "Accedé con tu email y contraseña para gestionar tu jornada."
-                    : "Completá tu email y contraseña para registrarte y confirmar tu cuenta por email."}
+                    ? "Accedé con tu email y contraseña, o pedí un magic link si no querés escribirla."
+                    : "Completá tu email y contraseña. La cuenta queda pendiente hasta confirmar el email."}
                 </p>
               </div>
 
@@ -349,6 +417,11 @@ export default function AuthPage() {
                   {showEmailError && (
                     <p className="mt-2 text-sm text-red-600" id="email-error" role="alert">
                       {errors.email}
+                    </p>
+                  )}
+                  {!showEmailError && emailSuggestion && (
+                    <p className="mt-2 text-sm text-amber-700">
+                      Revisá el dominio. Quizás quisiste escribir {emailSuggestion}.
                     </p>
                   )}
                 </div>
@@ -395,7 +468,7 @@ export default function AuthPage() {
                   </p>
                 )}
 
-                <button className="btn-primary mt-1 w-full" disabled={loading} type="submit">
+                <button className="btn-primary mt-1 w-full" disabled={!canSubmit} type="submit">
                   {loading
                     ? isSignIn
                       ? "Ingresando..."
@@ -404,6 +477,65 @@ export default function AuthPage() {
                       ? "Ingresar"
                       : "Registrarme"}
                 </button>
+
+                <div className="grid gap-3">
+                  {isSignIn ? (
+                    <>
+                      <button
+                        className="rounded-2xl border border-stone-300 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-400 hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!canSubmit}
+                        type="button"
+                        onClick={() =>
+                          runSecondaryAction(
+                            "magic-link",
+                            "Te enviamos un magic link. Revisá tu bandeja y spam."
+                          )
+                        }
+                      >
+                        {secondaryLoading === "magic-link"
+                          ? "Enviando magic link..."
+                          : "Enviar magic link"}
+                      </button>
+
+                      <button
+                        className="rounded-2xl border border-stone-300 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-400 hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled={!canSubmit}
+                        type="button"
+                        onClick={() =>
+                          runSecondaryAction(
+                            "password-reset",
+                            "Te enviamos un correo para restablecer tu contraseña."
+                          )
+                        }
+                      >
+                        {secondaryLoading === "password-reset"
+                          ? "Enviando recuperación..."
+                          : "Recuperar contraseña"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="rounded-2xl border border-stone-300 px-4 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-400 hover:text-stone-950 disabled:cursor-not-allowed disabled:opacity-60"
+                      disabled={!canSubmit}
+                      type="button"
+                      onClick={() =>
+                        runSecondaryAction(
+                          "resend-confirmation",
+                          "Te reenviamos el email de confirmación. Revisá tu bandeja y spam."
+                        )
+                      }
+                    >
+                      {secondaryLoading === "resend-confirmation"
+                        ? "Reenviando confirmación..."
+                        : "Reenviar confirmación"}
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-xs leading-5 text-stone-500">
+                  No repitas clics seguidos. La app aplica cooldown local para evitar spam y
+                  reintentos innecesarios.
+                </p>
               </div>
             </div>
           </form>

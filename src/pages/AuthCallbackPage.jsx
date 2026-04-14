@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import LoadingScreen from "../components/LoadingScreen";
+import { logAuthEmailEvent } from "../lib/emailAuth";
 import supabase from "../lib/supabaseClient";
 
 export default function AuthCallbackPage() {
@@ -14,6 +15,13 @@ export default function AuthCallbackPage() {
       try {
         const url = new URL(window.location.href);
         const code = url.searchParams.get("code");
+        const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+        const hashError = hashParams.get("error_description") || url.searchParams.get("error_description");
+        const flowType = url.searchParams.get("type") || hashParams.get("type");
+
+        if (hashError) {
+          throw new Error(hashError);
+        }
 
         if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -24,10 +32,16 @@ export default function AuthCallbackPage() {
         }
 
         if (!cancelled) {
+          logAuthEmailEvent("auth-callback.succeeded", {
+            flowType: flowType || "unknown",
+          });
           setStatus("success");
         }
       } catch (callbackError) {
         if (!cancelled) {
+          logAuthEmailEvent("auth-callback.failed", {
+            message: callbackError?.message ?? "",
+          });
           setError(callbackError.message || "No pudimos confirmar tu cuenta.");
           setStatus("error");
         }
