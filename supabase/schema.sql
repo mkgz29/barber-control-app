@@ -19,6 +19,8 @@ create table if not exists public.haircuts (
   commission_percentage numeric(5,2) not null check (commission_percentage >= 0 and commission_percentage <= 100),
   commission_amount numeric(10,2) not null check (commission_amount >= 0),
   haircut_date date not null,
+  attendance_type text default 'walk_in' check (attendance_type in ('appointment', 'walk_in')),
+  recorded_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 

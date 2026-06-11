@@ -16,6 +16,34 @@ export function formatCurrency(value) {
   }).format(Number(value || 0));
 }
 
+export const ATTENDANCE_TYPE_LABELS = {
+  appointment: "Con turno",
+  walk_in: "Orden de llegada",
+};
+
+export function formatAttendanceType(value) {
+  return ATTENDANCE_TYPE_LABELS[value] ?? "Sin especificar";
+}
+
+export function formatArgentinaTime(value) {
+  if (!value) {
+    return "Sin hora";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Sin hora";
+  }
+
+  return new Intl.DateTimeFormat("es-AR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "America/Argentina/Tucuman",
+  }).format(date);
+}
+
 export function toDateInputValue(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");

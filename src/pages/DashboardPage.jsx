@@ -129,6 +129,7 @@ export default function DashboardPage() {
       service: values.service,
       price,
       haircut_date: values.haircut_date,
+      attendance_type: values.attendance_type,
       commission_percentage: commissionPercentage,
       commission_amount: (price * commissionPercentage) / 100,
     };

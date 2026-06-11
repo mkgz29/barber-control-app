@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { formatCurrency } from "../lib/date";
+import { formatArgentinaTime, formatAttendanceType, formatCurrency } from "../lib/date";
 
 const EMPTY_FORM = {
   service: "",
   price: "",
+  attendance_type: "walk_in",
 };
 
 function getCardClassName({ featured, isToday }) {
@@ -54,6 +55,7 @@ export default function DayCard({
     setFormValues({
       service: editingHaircut.service ?? "",
       price: String(editingHaircut.price ?? ""),
+      attendance_type: editingHaircut.attendance_type ?? "walk_in",
     });
   }, [editingHaircut]);
 
@@ -69,6 +71,7 @@ export default function DayCard({
     setFormValues({
       service: haircut.service ?? "",
       price: String(haircut.price ?? ""),
+      attendance_type: haircut.attendance_type ?? "walk_in",
     });
     setError("");
     setIsFormOpen(true);
@@ -89,8 +92,8 @@ export default function DayCard({
     event.preventDefault();
     setError("");
 
-    if (!formValues.service.trim() || !formValues.price) {
-      setError("Completa servicio y precio.");
+    if (!formValues.service.trim() || !formValues.price || !formValues.attendance_type) {
+      setError("Completa servicio, precio y tipo de atencion.");
       return;
     }
 
@@ -105,6 +108,7 @@ export default function DayCard({
       haircut_date: day.date,
       service: formValues.service.trim(),
       price: numericPrice,
+      attendance_type: formValues.attendance_type,
     };
 
     try {
@@ -207,6 +211,43 @@ export default function DayCard({
               />
             </div>
 
+            <fieldset>
+              <legend className="mb-2 block text-sm font-medium text-stone-700">
+                Tipo de atencion
+              </legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {[
+                  { value: "walk_in", label: "Orden de llegada" },
+                  { value: "appointment", label: "Con turno" },
+                ].map((option) => (
+                  <label
+                    className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                      formValues.attendance_type === option.value
+                        ? "border-brand-600 bg-brand-50 text-brand-800"
+                        : "border-stone-200 bg-white text-stone-700"
+                    }`}
+                    key={option.value}
+                  >
+                    <input
+                      checked={formValues.attendance_type === option.value}
+                      className="sr-only"
+                      name={`attendance-type-${day.date}`}
+                      onChange={() =>
+                        setFormValues((current) => ({
+                          ...current,
+                          attendance_type: option.value,
+                        }))
+                      }
+                      required
+                      type="radio"
+                      value={option.value}
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
             {error && <p className="text-sm text-red-600">{error}</p>}
 
             <button className="btn-primary w-full" disabled={saving} type="submit">
@@ -271,6 +312,10 @@ export default function DayCard({
                   <p className="font-semibold text-stone-900">{haircut.service}</p>
                   <p className="text-sm text-stone-500">
                     Comision: {formatCurrency(haircut.commission_amount)}
+                  </p>
+                  <p className="mt-1 text-sm text-stone-500">
+                    {formatAttendanceType(haircut.attendance_type)} ·{" "}
+                    {formatArgentinaTime(haircut.recorded_at ?? haircut.created_at)}
                   </p>
                 </div>
 
