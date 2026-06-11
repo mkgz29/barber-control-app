@@ -14,6 +14,8 @@ import supabase from "../lib/supabaseClient";
 
 export default function MonthlySummaryPage() {
   const { user, profile } = useAuth();
+  const userRole = profile?.role;
+  const isAdmin = userRole === "admin";
   const [month, setMonth] = useState(getCurrentMonthValue());
   const [groupMode, setGroupMode] = useState("day");
   const [selectedWeekKey, setSelectedWeekKey] = useState("");
@@ -37,7 +39,7 @@ export default function MonthlySummaryPage() {
           .order("haircut_date", { ascending: true })
           .order("created_at", { ascending: true });
 
-        if (profile?.role !== "admin") {
+        if (!isAdmin) {
           query.eq("user_id", user.id);
         }
 
@@ -55,10 +57,10 @@ export default function MonthlySummaryPage() {
       }
     }
 
-    if (user?.id) {
+    if (user?.id && userRole) {
       loadMonthlyHaircuts();
     }
-  }, [month, profile?.role, user?.id]);
+  }, [isAdmin, month, user?.id, userRole]);
 
   const totals = useMemo(() => {
     return haircuts.reduce(
@@ -98,7 +100,6 @@ export default function MonthlySummaryPage() {
     return Array.from(groupedMap.values());
   }, [groupMode, haircuts]);
 
-  const isAdmin = profile?.role === "admin";
   const todayDate = getArgentinaTodayValue(new Date());
   const weeklyBlocks = useMemo(
     () => groupHaircutsByBusinessWeeks(haircuts, month),
@@ -123,7 +124,7 @@ export default function MonthlySummaryPage() {
     },
     {
       key: "count",
-      title: "Cantidad de cortes",
+      title: isAdmin ? "Cortes del mes" : "Tus cortes del mes",
       value: totals.count,
     },
   ];
@@ -141,8 +142,10 @@ export default function MonthlySummaryPage() {
       <section className="card animate-card-in p-4 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="eyebrow">Resumen mensual</p>
-            <h1 className="mt-2 text-2xl font-semibold text-stone-950 sm:text-3xl">Mes</h1>
+            <p className="eyebrow">{isAdmin ? "Resumen mensual general" : "Tu resumen mensual"}</p>
+            <h1 className="mt-2 text-2xl font-semibold text-stone-950 sm:text-3xl">
+              {isAdmin ? "Mes" : "Tu mes"}
+            </h1>
             <p className="muted-text mt-2">
               Filtra por mes y revisa tus numeros agrupados por dia o semana.
             </p>

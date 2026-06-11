@@ -43,7 +43,8 @@ export default function DashboardPage() {
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
-  const isAdmin = profile?.role === "admin";
+  const userRole = profile?.role;
+  const isAdmin = userRole === "admin";
   const weekRangeLabel = formatBusinessWeekRange(weekRange);
 
   const haircutsByDay = useMemo(() => {
@@ -90,7 +91,7 @@ export default function DashboardPage() {
   }, []);
 
   async function loadHaircuts() {
-    if (!user?.id) {
+    if (!user?.id || !userRole) {
       return;
     }
 
@@ -100,24 +101,8 @@ export default function DashboardPage() {
 
     const weekStart = toDateInputValue(weekRange.start);
     const weekEnd = toDateInputValue(weekRange.end);
-    const weeklyMetricsQuery = supabase
-      .from("haircuts")
-      .select("*")
-      .gte("haircut_date", weekStart)
-      .lte("haircut_date", weekEnd)
-      .order("haircut_date", { ascending: true })
-      .order("created_at", { ascending: false });
-
-    if (!isAdmin) {
-      weeklyMetricsQuery.eq("user_id", user.id);
-    }
-
     try {
-      const [
-        { data: weeklyUserHaircuts, error: fetchError },
-        { data: weeklyMetrics, error: weeklyMetricsError },
-        { data: globalWeeklyHaircuts, error: globalFetchError },
-      ] = await Promise.all([
+      const buildOwnWeeklyHaircutsQuery = () =>
         supabase
           .from("haircuts")
           .select("*")
@@ -125,7 +110,22 @@ export default function DashboardPage() {
           .gte("haircut_date", weekStart)
           .lte("haircut_date", weekEnd)
           .order("haircut_date", { ascending: true })
-          .order("created_at", { ascending: false }),
+          .order("created_at", { ascending: false });
+      const weeklyMetricsQuery = isAdmin
+        ? supabase
+            .from("haircuts")
+            .select("*")
+            .gte("haircut_date", weekStart)
+            .lte("haircut_date", weekEnd)
+            .order("haircut_date", { ascending: true })
+            .order("created_at", { ascending: false })
+        : buildOwnWeeklyHaircutsQuery();
+      const [
+        { data: weeklyUserHaircuts, error: fetchError },
+        { data: weeklyMetrics, error: weeklyMetricsError },
+        { data: globalWeeklyHaircuts, error: globalFetchError },
+      ] = await Promise.all([
+        buildOwnWeeklyHaircutsQuery(),
         weeklyMetricsQuery,
         isAdmin
           ? supabase.rpc("get_global_weekly_haircuts", {
@@ -158,7 +158,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadHaircuts();
-  }, [user?.id, profile?.role, weekRange.start.getTime()]);
+  }, [user?.id, userRole, weekRange.start.getTime()]);
 
   function buildHaircutPayload(values) {
     const commissionPercentage = Number(profile?.commission_percentage || 0);
@@ -254,7 +254,7 @@ export default function DashboardPage() {
   const weeklySummaryCards = [
     {
       key: "cuts",
-      title: "Cortes semanales",
+      title: isAdmin ? "Cortes totales de la semana" : "Tus cortes esta semana",
       value: weeklyCutsCount,
     },
     ...(isAdmin
@@ -263,7 +263,7 @@ export default function DashboardPage() {
     {
       key: "commission",
       money: true,
-      title: isAdmin ? "Total semanal de comision" : "Tu comision semanal",
+      title: isAdmin ? "Comision semanal total" : "Tu comision semanal",
       value: weeklyCommission,
     },
   ];
@@ -273,8 +273,8 @@ export default function DashboardPage() {
       <CollapsibleSection
         defaultOpen={defaultWeeklyOpen}
         description={weekRangeLabel}
-        eyebrow="Semana de pago"
-        title="Resumen semanal"
+        eyebrow={isAdmin ? "Semana de pago" : "Tu semana de pago"}
+        title={isAdmin ? "Resumen semanal general" : "Tu resumen semanal"}
       >
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
