@@ -8,6 +8,7 @@ import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import MonthlySummaryPage from "./pages/MonthlySummaryPage";
 import ProfileSetupPage from "./pages/ProfileSetupPage";
+import RankingMonthlyPage from "./pages/RankingMonthlyPage";
 import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/semana" element={<DashboardPage />} />
           <Route path="/perfil" element={<ProfileSetupPage />} />
           <Route path="/resumen-mensual" element={<MonthlySummaryPage />} />
+          <Route path="/ranking-mensual" element={<RankingMonthlyPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />

@@ -30,6 +30,7 @@ export default function DayCard({
   isToday = false,
   featured = false,
   badgeLabel = "",
+  createRequestKey = 0,
 }) {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingHaircutId, setEditingHaircutId] = useState(null);
@@ -66,6 +67,14 @@ export default function DayCard({
     setError("");
     setIsFormOpen(true);
   }
+
+  useEffect(() => {
+    if (!createRequestKey) {
+      return;
+    }
+
+    openCreateForm();
+  }, [createRequestKey]);
 
   function openEditForm(haircut) {
     setEditingHaircutId(haircut.id);

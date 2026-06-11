@@ -1,3 +1,4 @@
+import { CalendarDays, LogOut, Scissors, Shield, Trophy, User } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
@@ -23,19 +24,24 @@ function getRoleLabel(role) {
   return null;
 }
 
-function NavItem({ to, label }) {
+function NavItem({ to, label, icon: Icon, accent = false }) {
   return (
     <NavLink
+      aria-label={label}
       to={to}
       className={({ isActive }) =>
-        `inline-flex min-h-11 flex-1 items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 sm:flex-none ${
+        `inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 sm:flex-none sm:px-4 ${
           isActive
-            ? "bg-stone-950 text-white shadow-[0_12px_26px_-18px_rgba(28,25,23,0.7)]"
+            ? accent
+              ? "bg-brand-700 text-white shadow-[0_12px_26px_-18px_rgba(89,47,37,0.7)]"
+              : "bg-stone-950 text-white shadow-[0_12px_26px_-18px_rgba(28,25,23,0.7)]"
             : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50 hover:text-stone-950 hover:ring-stone-300"
         }`
       }
+      title={label}
     >
-      {label}
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <span className="hidden sm:inline">{label}</span>
     </NavLink>
   );
 }
@@ -65,6 +71,7 @@ export default function AppShell() {
                   className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-stone-200 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-4 focus:ring-brand-200/25 active:scale-[0.98]"
                   onClick={signOut}
                 >
+                  <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
                   Salir
                 </button>
               </div>
@@ -97,11 +104,12 @@ export default function AppShell() {
           </div>
 
           <div className="border-t border-stone-200/80 bg-white/75 px-3 py-3 sm:px-5 sm:py-4">
-            <nav className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
-              <NavItem to="/semana" label="Semana" />
-              <NavItem to="/resumen-mensual" label="Mes" />
-              <NavItem to="/perfil" label="Perfil" />
-              {profile?.role === "admin" && <NavItem to="/admin" label="Admin" />}
+            <nav className="grid grid-cols-4 gap-2 sm:flex sm:flex-wrap sm:gap-3">
+              <NavItem to="/semana" label="Semana" icon={Scissors} />
+              <NavItem to="/resumen-mensual" label="Mes" icon={CalendarDays} />
+              <NavItem to="/ranking-mensual" label="Ranking mensual" icon={Trophy} accent />
+              <NavItem to="/perfil" label="Perfil" icon={User} />
+              {profile?.role === "admin" && <NavItem to="/admin" label="Admin" icon={Shield} />}
             </nav>
           </div>
         </header>

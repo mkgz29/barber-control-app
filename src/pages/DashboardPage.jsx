@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import CollapsibleSection from "../components/CollapsibleSection";
 import DayCard from "../components/DayCard";
+import FloatingAddButton from "../components/FloatingAddButton";
 import StatCard from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
   const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
   const [defaultWeeklyOpen] = useState(getDefaultWeeklyOpen);
+  const [todayCreateRequestKey, setTodayCreateRequestKey] = useState(0);
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
@@ -226,8 +228,19 @@ export default function DashboardPage() {
     },
   ];
 
+  function handleFloatingAddClick() {
+    setTodayCreateRequestKey((current) => current + 1);
+
+    window.requestAnimationFrame(() => {
+      document.getElementById("today-haircuts-section")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-24">
       <CollapsibleSection
         defaultOpen={defaultWeeklyOpen}
         description={weekRangeLabel}
@@ -264,7 +277,10 @@ export default function DashboardPage() {
       </CollapsibleSection>
 
       {!loading && todayDay && (
-        <section className="card animate-card-in space-y-5 p-4 sm:p-6">
+        <section
+          className="card animate-card-in scroll-mt-4 space-y-5 p-4 sm:p-6"
+          id="today-haircuts-section"
+        >
           <div className="border-b border-stone-200 pb-4">
             <p className="eyebrow">Hoy</p>
             <h2 className="section-title mt-2">Cortes del dia</h2>
@@ -279,6 +295,7 @@ export default function DashboardPage() {
             featured
             haircuts={haircutsByDay[todayDay.date] || []}
             isToday
+            createRequestKey={todayCreateRequestKey}
             onAddHaircut={handleAddHaircut}
             onDeleteHaircut={handleDeleteHaircut}
             onUpdateHaircut={handleUpdateHaircut}
@@ -325,6 +342,8 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
+
+      {!loading && todayDay && <FloatingAddButton onClick={handleFloatingAddClick} />}
     </div>
   );
 }
