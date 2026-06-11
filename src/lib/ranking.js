@@ -42,9 +42,9 @@ function getHaircutDate(haircut) {
 export function getCurrentWeekRange(referenceDate = new Date()) {
   const start = parseLocalDate(referenceDate) ?? new Date();
   const day = start.getDay();
-  const diff = day === 0 ? -6 : 1 - day;
+  const diff = (day - 6 + 7) % 7;
 
-  start.setDate(start.getDate() + diff);
+  start.setDate(start.getDate() - diff);
   start.setHours(0, 0, 0, 0);
 
   const end = new Date(start);

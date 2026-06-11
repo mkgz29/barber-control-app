@@ -3,29 +3,43 @@ import DayCard from "../components/DayCard";
 import StatCard from "../components/StatCard";
 import WeeklyRanking from "../components/WeeklyRanking";
 import { useAuth } from "../context/AuthContext";
-import { getCurrentWeek, getWeekRange, toDateInputValue } from "../lib/date";
+import {
+  formatBusinessWeekRange,
+  getArgentinaTodayValue,
+  getBusinessWeekDays,
+  getBusinessWeekRange,
+  getCurrentMonthValue,
+  getMonthRange,
+  groupHaircutsByBusinessWeeks,
+  toDateInputValue,
+} from "../lib/date";
 import supabase from "../lib/supabaseClient";
 
 function buildCurrentWeekState(referenceDate = new Date()) {
   return {
-    days: getCurrentWeek(referenceDate),
-    range: getWeekRange(referenceDate),
+    days: getBusinessWeekDays(referenceDate),
+    range: getBusinessWeekRange(referenceDate),
   };
 }
 
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const [haircuts, setHaircuts] = useState([]);
+  const [weeklyMetricHaircuts, setWeeklyMetricHaircuts] = useState([]);
+  const [monthlyMetricHaircuts, setMonthlyMetricHaircuts] = useState([]);
   const [weeklyRanking, setWeeklyRanking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [rankingError, setRankingError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
-  const [todayDate, setTodayDate] = useState(() => toDateInputValue(new Date()));
+  const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
+  const isAdmin = profile?.role === "admin";
+  const currentMonth = todayDate.slice(0, 7) || getCurrentMonthValue();
+  const weekRangeLabel = formatBusinessWeekRange(weekRange);
 
   const haircutsByDay = useMemo(() => {
     return haircuts.reduce((accumulator, haircut) => {
@@ -50,7 +64,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     function syncCurrentWeek() {
-      const nextTodayDate = toDateInputValue(new Date());
+      const nextTodayDate = getArgentinaTodayValue(new Date());
       setTodayDate((previousTodayDate) =>
         previousTodayDate === nextTodayDate ? previousTodayDate : nextTodayDate
       );
@@ -81,10 +95,32 @@ export default function DashboardPage() {
 
     const weekStart = toDateInputValue(weekRange.start);
     const weekEnd = toDateInputValue(weekRange.end);
+    const monthRange = getMonthRange(currentMonth);
+    const weeklyMetricsQuery = supabase
+      .from("haircuts")
+      .select("*")
+      .gte("haircut_date", weekStart)
+      .lte("haircut_date", weekEnd)
+      .order("haircut_date", { ascending: true })
+      .order("created_at", { ascending: false });
+    const monthlyMetricsQuery = supabase
+      .from("haircuts")
+      .select("*")
+      .gte("haircut_date", monthRange.start)
+      .lte("haircut_date", monthRange.end)
+      .order("haircut_date", { ascending: true })
+      .order("created_at", { ascending: true });
+
+    if (!isAdmin) {
+      weeklyMetricsQuery.eq("user_id", user.id);
+      monthlyMetricsQuery.eq("user_id", user.id);
+    }
 
     try {
       const [
         { data: weeklyUserHaircuts, error: fetchError },
+        { data: weeklyMetrics, error: weeklyMetricsError },
+        { data: monthlyMetrics, error: monthlyMetricsError },
         { data: globalWeeklyHaircuts, error: globalFetchError },
       ] = await Promise.all([
         supabase
@@ -95,13 +131,25 @@ export default function DashboardPage() {
           .lte("haircut_date", weekEnd)
           .order("haircut_date", { ascending: true })
           .order("created_at", { ascending: false }),
-        supabase.rpc("get_global_weekly_haircuts", {
-          reference_date: weekStart,
-        }),
+        weeklyMetricsQuery,
+        monthlyMetricsQuery,
+        isAdmin
+          ? supabase.rpc("get_global_weekly_haircuts", {
+              reference_date: weekStart,
+            })
+          : Promise.resolve({ data: [], error: null }),
       ]);
 
       if (fetchError) {
         throw fetchError;
+      }
+
+      if (weeklyMetricsError) {
+        throw weeklyMetricsError;
+      }
+
+      if (monthlyMetricsError) {
+        throw monthlyMetricsError;
       }
 
       if (globalFetchError) {
@@ -109,6 +157,8 @@ export default function DashboardPage() {
       }
 
       setHaircuts(weeklyUserHaircuts || []);
+      setWeeklyMetricHaircuts(weeklyMetrics || []);
+      setMonthlyMetricHaircuts(monthlyMetrics || []);
       setWeeklyRanking(globalWeeklyHaircuts || []);
     } catch (loadError) {
       setError(loadError.message || "No se pudieron cargar los cortes.");
@@ -119,7 +169,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadHaircuts();
-  }, [user?.id, weekRange.start.getTime()]);
+  }, [user?.id, profile?.role, weekRange.start.getTime(), currentMonth]);
 
   function buildHaircutPayload(values) {
     const commissionPercentage = Number(profile?.commission_percentage || 0);
@@ -206,13 +256,57 @@ export default function DashboardPage() {
     }
   }
 
-  const weeklyGross = haircuts.reduce((sum, haircut) => sum + Number(haircut.price), 0);
-  const weeklyCommission = haircuts.reduce(
+  const weeklyGross = weeklyMetricHaircuts.reduce((sum, haircut) => sum + Number(haircut.price), 0);
+  const weeklyCommission = weeklyMetricHaircuts.reduce(
     (sum, haircut) => sum + Number(haircut.commission_amount),
     0
   );
-  const isAdmin = profile?.role === "admin";
+  const weeklyCutsCount = weeklyMetricHaircuts.length;
+  const monthlyWeekBlocks = useMemo(
+    () => groupHaircutsByBusinessWeeks(monthlyMetricHaircuts, currentMonth),
+    [currentMonth, monthlyMetricHaircuts]
+  );
+  const monthlyCutsCount = monthlyWeekBlocks.reduce((sum, block) => sum + block.count, 0);
+  const monthlyCommission = monthlyWeekBlocks.reduce(
+    (sum, block) => sum + block.commission,
+    0
+  );
+  const bestMonthlyWeek = monthlyWeekBlocks.reduce(
+    (best, block) => (block.count > best.count ? block : best),
+    { label: "Sin datos", count: 0 }
+  );
+  const averageWeeklyCuts =
+    monthlyWeekBlocks.length > 0 ? monthlyCutsCount / monthlyWeekBlocks.length : 0;
+  const maxMonthlyWeekCuts = Math.max(...monthlyWeekBlocks.map((block) => block.count), 0);
+  const monthlySummaryCards = [
+    {
+      key: "best-week",
+      title: "Semana con mas cortes",
+      value: bestMonthlyWeek.count > 0 ? `${bestMonthlyWeek.label}: ${bestMonthlyWeek.count}` : "Sin datos",
+    },
+    {
+      key: "weekly-average",
+      title: "Promedio semanal",
+      value: averageWeeklyCuts.toFixed(1),
+    },
+    {
+      key: "month-count",
+      title: "Total de cortes del mes",
+      value: monthlyCutsCount,
+    },
+    {
+      key: "month-commission",
+      money: true,
+      title: isAdmin ? "Comision mensual estimada" : "Tu comision mensual estimada",
+      value: monthlyCommission,
+    },
+  ];
   const weeklySummaryCards = [
+    {
+      key: "cuts",
+      title: "Cortes semanales",
+      value: weeklyCutsCount,
+    },
     ...(isAdmin
       ? [{ key: "gross", highlight: true, money: true, title: "Total semanal (bruto)", value: weeklyGross }]
       : []),
@@ -233,7 +327,7 @@ export default function DashboardPage() {
               Resumen semanal
             </p>
             <h1 className="mt-2 text-3xl font-bold text-stone-900">Resumen semanal</h1>
-            <p className="mt-2 text-sm text-stone-600">Revisa lo cargado entre lunes y domingo.</p>
+            <p className="mt-2 text-sm text-stone-600">{weekRangeLabel}</p>
           </div>
           <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-600">
             Comision actual: <strong>{Number(profile?.commission_percentage || 0)}%</strong>
@@ -242,7 +336,7 @@ export default function DashboardPage() {
 
         <div
           className={`mt-6 grid gap-4 ${
-            weeklySummaryCards.length > 1 ? "sm:grid-cols-2" : "sm:grid-cols-1"
+            weeklySummaryCards.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"
           }`}
         >
           {weeklySummaryCards.map((card) => (
@@ -257,13 +351,65 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {rankingError && (
+      <section className="card p-6">
+        <div className="border-b border-stone-200 pb-4">
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
+            Resumen mensual por semanas
+          </p>
+          <h2 className="mt-2 text-2xl font-bold text-stone-900">
+            Actividad por semanas de pago
+          </h2>
+          <p className="mt-1 text-sm text-stone-600">
+            Agrupado por semanas comerciales de sabado a viernes.
+          </p>
+        </div>
+
+        {monthlyCutsCount === 0 ? (
+          <div className="mt-5 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">
+            Todavia no hay cortes suficientes para mostrar estadisticas mensuales.
+          </div>
+        ) : (
+          <>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {monthlySummaryCards.map((card) => (
+                <StatCard key={card.key} money={card.money} title={card.title} value={card.value} />
+              ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-stone-50 p-4">
+              <div className="flex h-48 items-end gap-3">
+                {monthlyWeekBlocks.map((block) => {
+                  const height = maxMonthlyWeekCuts > 0 ? (block.count / maxMonthlyWeekCuts) * 100 : 0;
+
+                  return (
+                    <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={block.key}>
+                      <div className="flex h-36 w-full items-end rounded-xl bg-white px-2 py-2">
+                        <div
+                          className="w-full rounded-lg bg-brand-600 transition-all"
+                          style={{ height: `${Math.max(height, block.count > 0 ? 8 : 0)}%` }}
+                          title={`${block.displayRange}: ${block.count} cortes`}
+                        />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs font-semibold text-stone-700">{block.label}</p>
+                        <p className="text-xs text-stone-500">{block.count} cortes</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
+      </section>
+
+      {isAdmin && rankingError && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           {rankingError}
         </div>
       )}
 
-      <WeeklyRanking ranking={weeklyRanking} />
+      {isAdmin && <WeeklyRanking ranking={weeklyRanking} />}
 
       {!loading && todayDay && (
         <section className="card space-y-5 p-6">
