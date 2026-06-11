@@ -13,9 +13,7 @@ import {
 import supabase from "../lib/supabaseClient";
 
 export default function MonthlySummaryPage() {
-  const { user, profile } = useAuth();
-  const userRole = profile?.role;
-  const isAdmin = userRole === "admin";
+  const { user } = useAuth();
   const [month, setMonth] = useState(getCurrentMonthValue());
   const [groupMode, setGroupMode] = useState("day");
   const [selectedWeekKey, setSelectedWeekKey] = useState("");
@@ -34,14 +32,11 @@ export default function MonthlySummaryPage() {
         const query = supabase
           .from("haircuts")
           .select("*")
+          .eq("user_id", user.id)
           .gte("haircut_date", range.start)
           .lte("haircut_date", range.end)
           .order("haircut_date", { ascending: true })
           .order("created_at", { ascending: true });
-
-        if (!isAdmin) {
-          query.eq("user_id", user.id);
-        }
 
         const { data, error: fetchError } = await query;
 
@@ -57,19 +52,18 @@ export default function MonthlySummaryPage() {
       }
     }
 
-    if (user?.id && userRole) {
+    if (user?.id) {
       loadMonthlyHaircuts();
     }
-  }, [isAdmin, month, user?.id, userRole]);
+  }, [month, user?.id]);
 
   const totals = useMemo(() => {
     return haircuts.reduce(
       (accumulator, haircut) => ({
-        gross: accumulator.gross + Number(haircut.price),
         commission: accumulator.commission + Number(haircut.commission_amount),
         count: accumulator.count + 1,
       }),
-      { gross: 0, commission: 0, count: 0 }
+      { commission: 0, count: 0 }
     );
   }, [haircuts]);
 
@@ -85,14 +79,12 @@ export default function MonthlySummaryPage() {
         groupedMap.set(key, {
           key,
           label,
-          total: 0,
           commission: 0,
           count: 0,
         });
       }
 
       const group = groupedMap.get(key);
-      group.total += Number(haircut.price);
       group.commission += Number(haircut.commission_amount);
       group.count += 1;
     });
@@ -115,16 +107,15 @@ export default function MonthlySummaryPage() {
     weeklyBlocks[0] ??
     null;
   const monthlySummaryCards = [
-    ...(isAdmin ? [{ key: "gross", money: true, title: "Total del mes", value: totals.gross }] : []),
     {
       key: "commission",
       money: true,
-      title: isAdmin ? "Total de comision del mes" : "Tu comision mensual",
+      title: "Tu comision mensual",
       value: totals.commission,
     },
     {
       key: "count",
-      title: isAdmin ? "Cortes del mes" : "Tus cortes del mes",
+      title: "Tus cortes del mes",
       value: totals.count,
     },
   ];
@@ -142,9 +133,9 @@ export default function MonthlySummaryPage() {
       <section className="card animate-card-in p-4 sm:p-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="eyebrow">{isAdmin ? "Resumen mensual general" : "Tu resumen mensual"}</p>
+            <p className="eyebrow">Tu resumen mensual</p>
             <h1 className="mt-2 text-2xl font-semibold text-stone-950 sm:text-3xl">
-              {isAdmin ? "Mes" : "Tu mes"}
+              Tu mes
             </h1>
             <p className="muted-text mt-2">
               Filtra por mes y revisa tus numeros agrupados por dia o semana.
@@ -206,8 +197,8 @@ export default function MonthlySummaryPage() {
           <p className="muted-text">Semana comercial de sabado a viernes.</p>
         </div>
 
-        <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50/80 p-3 sm:p-4">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-3 sm:p-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {weeklyBlocks.map((block) => {
               const isFuture = block.start > todayDate;
               const isSelected = selectedWeek?.key === block.key;
@@ -225,21 +216,21 @@ export default function MonthlySummaryPage() {
                   onClick={() => setSelectedWeekKey(block.key)}
                   type="button"
                 >
-                  <div className="flex items-end gap-3 sm:block">
-                    <div className="flex h-20 w-3 shrink-0 items-end overflow-hidden rounded-full bg-stone-100 sm:h-28 sm:w-full sm:rounded-2xl">
+                  <div className="flex items-center gap-3 sm:block">
+                    <div className="flex h-16 w-2 shrink-0 items-end overflow-hidden rounded-full bg-stone-100 sm:mx-auto sm:h-20 sm:w-6 sm:rounded-full">
                       <div
-                        className={`w-full rounded-full sm:rounded-2xl ${
+                        className={`w-full rounded-full ${
                           isFuture
                             ? "bg-stone-300"
-                            : "bg-gradient-to-t from-brand-800 via-brand-600 to-brand-300"
+                            : "bg-gradient-to-t from-brand-700 via-brand-500 to-brand-300"
                         }`}
-                        style={{ height: `${Math.max(height, block.count > 0 ? 12 : 0)}%` }}
+                        style={{ height: `${Math.max(height, block.count > 0 ? 10 : 0)}%` }}
                       />
                     </div>
-                    <div className="min-w-0 sm:mt-3">
+                    <div className="min-w-0 sm:mt-2 sm:text-center">
                       <p className="text-sm font-semibold text-stone-950">{block.label}</p>
-                      <p className="mt-1 text-xs leading-5 text-stone-500">{block.displayRange}</p>
-                      <p className="mt-2 text-sm font-semibold text-brand-800">
+                      <p className="mt-1 text-xs leading-4 text-stone-500">{block.displayRange}</p>
+                      <p className="mt-1 text-sm font-semibold text-brand-800">
                         {block.count} {block.count === 1 ? "corte" : "cortes"}
                       </p>
                     </div>
@@ -266,7 +257,7 @@ export default function MonthlySummaryPage() {
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                {isAdmin ? "Comision total" : "Tu comision"}
+                Tu comision
               </p>
               <p className="mt-1 text-xl font-semibold text-brand-800">
                 {formatCurrency(selectedWeek.commission)}
@@ -298,11 +289,6 @@ export default function MonthlySummaryPage() {
                 </div>
 
                 <div className="grid gap-2 text-sm sm:text-right">
-                  {isAdmin && (
-                    <p className="font-semibold text-stone-700">
-                      Total: {formatCurrency(item.total)}
-                    </p>
-                  )}
                   <p className="font-semibold text-brand-800">
                     Comision: {formatCurrency(item.commission)}
                   </p>

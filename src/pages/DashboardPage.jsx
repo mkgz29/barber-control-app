@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import CollapsibleSection from "../components/CollapsibleSection";
 import DayCard from "../components/DayCard";
 import StatCard from "../components/StatCard";
-import WeeklyRanking from "../components/WeeklyRanking";
 import { useAuth } from "../context/AuthContext";
 import {
   formatBusinessWeekRange,
@@ -32,19 +31,15 @@ export default function DashboardPage() {
   const { user, profile } = useAuth();
   const [haircuts, setHaircuts] = useState([]);
   const [weeklyMetricHaircuts, setWeeklyMetricHaircuts] = useState([]);
-  const [weeklyRanking, setWeeklyRanking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [rankingError, setRankingError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
   const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
   const [defaultWeeklyOpen] = useState(getDefaultWeeklyOpen);
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
-  const userRole = profile?.role;
-  const isAdmin = userRole === "admin";
   const weekRangeLabel = formatBusinessWeekRange(weekRange);
 
   const haircutsByDay = useMemo(() => {
@@ -91,64 +86,31 @@ export default function DashboardPage() {
   }, []);
 
   async function loadHaircuts() {
-    if (!user?.id || !userRole) {
+    if (!user?.id) {
       return;
     }
 
     setLoading(true);
     setError("");
-    setRankingError("");
 
     const weekStart = toDateInputValue(weekRange.start);
     const weekEnd = toDateInputValue(weekRange.end);
     try {
-      const buildOwnWeeklyHaircutsQuery = () =>
-        supabase
-          .from("haircuts")
-          .select("*")
-          .eq("user_id", user.id)
-          .gte("haircut_date", weekStart)
-          .lte("haircut_date", weekEnd)
-          .order("haircut_date", { ascending: true })
-          .order("created_at", { ascending: false });
-      const weeklyMetricsQuery = isAdmin
-        ? supabase
-            .from("haircuts")
-            .select("*")
-            .gte("haircut_date", weekStart)
-            .lte("haircut_date", weekEnd)
-            .order("haircut_date", { ascending: true })
-            .order("created_at", { ascending: false })
-        : buildOwnWeeklyHaircutsQuery();
-      const [
-        { data: weeklyUserHaircuts, error: fetchError },
-        { data: weeklyMetrics, error: weeklyMetricsError },
-        { data: globalWeeklyHaircuts, error: globalFetchError },
-      ] = await Promise.all([
-        buildOwnWeeklyHaircutsQuery(),
-        weeklyMetricsQuery,
-        isAdmin
-          ? supabase.rpc("get_global_weekly_haircuts", {
-              reference_date: weekStart,
-            })
-          : Promise.resolve({ data: [], error: null }),
-      ]);
+      const { data: weeklyUserHaircuts, error: fetchError } = await supabase
+        .from("haircuts")
+        .select("*")
+        .eq("user_id", user.id)
+        .gte("haircut_date", weekStart)
+        .lte("haircut_date", weekEnd)
+        .order("haircut_date", { ascending: true })
+        .order("created_at", { ascending: false });
 
       if (fetchError) {
         throw fetchError;
       }
 
-      if (weeklyMetricsError) {
-        throw weeklyMetricsError;
-      }
-
-      if (globalFetchError) {
-        setRankingError(globalFetchError.message || "No se pudo cargar el ranking semanal.");
-      }
-
       setHaircuts(weeklyUserHaircuts || []);
-      setWeeklyMetricHaircuts(weeklyMetrics || []);
-      setWeeklyRanking(globalWeeklyHaircuts || []);
+      setWeeklyMetricHaircuts(weeklyUserHaircuts || []);
     } catch (loadError) {
       setError(loadError.message || "No se pudieron cargar los cortes.");
     } finally {
@@ -158,7 +120,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadHaircuts();
-  }, [user?.id, userRole, weekRange.start.getTime()]);
+  }, [user?.id, weekRange.start.getTime()]);
 
   function buildHaircutPayload(values) {
     const commissionPercentage = Number(profile?.commission_percentage || 0);
@@ -245,7 +207,6 @@ export default function DashboardPage() {
     }
   }
 
-  const weeklyGross = weeklyMetricHaircuts.reduce((sum, haircut) => sum + Number(haircut.price), 0);
   const weeklyCommission = weeklyMetricHaircuts.reduce(
     (sum, haircut) => sum + Number(haircut.commission_amount),
     0
@@ -254,16 +215,13 @@ export default function DashboardPage() {
   const weeklySummaryCards = [
     {
       key: "cuts",
-      title: isAdmin ? "Cortes totales de la semana" : "Tus cortes esta semana",
+      title: "Tus cortes esta semana",
       value: weeklyCutsCount,
     },
-    ...(isAdmin
-      ? [{ key: "gross", highlight: true, money: true, title: "Total semanal (bruto)", value: weeklyGross }]
-      : []),
     {
       key: "commission",
       money: true,
-      title: isAdmin ? "Comision semanal total" : "Tu comision semanal",
+      title: "Tu comision semanal",
       value: weeklyCommission,
     },
   ];
@@ -273,8 +231,8 @@ export default function DashboardPage() {
       <CollapsibleSection
         defaultOpen={defaultWeeklyOpen}
         description={weekRangeLabel}
-        eyebrow={isAdmin ? "Semana de pago" : "Tu semana de pago"}
-        title={isAdmin ? "Resumen semanal general" : "Tu resumen semanal"}
+        eyebrow="Tu semana de pago"
+        title="Tu resumen semanal"
       >
         <div className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -304,23 +262,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </CollapsibleSection>
-
-      {isAdmin && rankingError && (
-        <div className="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900">
-          {rankingError}
-        </div>
-      )}
-
-      {isAdmin && (
-        <CollapsibleSection
-          defaultOpen={false}
-          description="Top global de cortes de la semana comercial"
-          eyebrow="Admin"
-          title="Ranking semanal"
-        >
-          <WeeklyRanking ranking={weeklyRanking} />
-        </CollapsibleSection>
-      )}
 
       {!loading && todayDay && (
         <section className="card animate-card-in space-y-5 p-4 sm:p-6">
