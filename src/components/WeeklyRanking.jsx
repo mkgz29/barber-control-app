@@ -14,7 +14,7 @@ function getBarbershopName(entry) {
 
 function getPodiumCardClassName(position) {
   if (position === 0) {
-    return "border-amber-200/80 bg-[linear-gradient(160deg,rgba(255,251,235,0.98)_0%,rgba(255,255,255,0.96)_48%,rgba(245,245,244,0.96)_100%)] shadow-[0_24px_60px_-28px_rgba(180,83,9,0.35)]";
+    return "border-brand-200/80 bg-[linear-gradient(160deg,rgba(255,247,241,0.98)_0%,rgba(255,255,255,0.96)_48%,rgba(245,245,244,0.96)_100%)] shadow-[0_24px_60px_-28px_rgba(89,47,37,0.28)]";
   }
 
   if (position === 1) {
@@ -26,7 +26,7 @@ function getPodiumCardClassName(position) {
 
 function getPositionBadgeClassName(position) {
   if (position === 0) {
-    return "bg-amber-500 text-white shadow-[0_12px_30px_-18px_rgba(180,83,9,0.8)]";
+    return "bg-brand-700 text-white shadow-[0_12px_30px_-18px_rgba(89,47,37,0.75)]";
   }
 
   if (position === 1) {
@@ -76,7 +76,7 @@ function RankingIdentity({ entry, position, compact = false }) {
           Puesto #{position + 1}
         </p>
         {isFirstPlace && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-amber-800">
+          <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-brand-800">
             <Crown className="h-3.5 w-3.5" aria-hidden="true" />
             Top semanal
           </span>
@@ -187,14 +187,10 @@ export default function WeeklyRanking({ ranking = [], onSelectEntry }) {
   const remaining = ranking.slice(3);
 
   return (
-    <section className="card p-6">
+    <section className="p-0">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-            Ranking semanal
-          </p>
-          <h2 className="mt-2 text-3xl font-bold text-stone-900">Ranking semanal</h2>
-          <p className="mt-2 max-w-2xl text-sm text-stone-600">
+          <p className="mt-0 max-w-2xl text-sm leading-6 text-stone-500">
             Un vistazo claro al movimiento de la semana para reconocer consistencia y buen
             rendimiento.
           </p>

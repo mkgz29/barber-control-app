@@ -45,7 +45,7 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold ${
                 user.is_active
-                  ? "bg-emerald-100 text-emerald-700"
+                  ? "bg-brand-50 text-brand-800"
                   : "bg-red-100 text-red-700"
               }`}
             >
@@ -354,11 +354,11 @@ export default function AdminPage() {
               </p>
               <p className="mt-1 text-2xl font-bold text-stone-900">{totalUsers}</p>
             </div>
-            <div className="rounded-2xl bg-emerald-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+            <div className="rounded-2xl border border-brand-100 bg-brand-50/80 px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
                 Activos
               </p>
-              <p className="mt-1 text-2xl font-bold text-emerald-800">{activeUsers}</p>
+              <p className="mt-1 text-2xl font-bold text-brand-800">{activeUsers}</p>
             </div>
             <div className="rounded-2xl bg-brand-50 px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">

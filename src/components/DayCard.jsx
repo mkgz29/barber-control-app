@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Clock, Pencil, Plus, Trash2, X } from "lucide-react";
 import { formatArgentinaTime, formatAttendanceType, formatCurrency } from "../lib/date";
 
 const EMPTY_FORM = {
@@ -9,11 +10,11 @@ const EMPTY_FORM = {
 
 function getCardClassName({ featured, isToday }) {
   if (featured) {
-    return "border-brand-200 bg-gradient-to-br from-brand-50 via-white to-stone-50 shadow-[0_24px_60px_-34px_rgba(20,83,45,0.35)]";
+    return "border-brand-200 bg-[linear-gradient(145deg,rgba(255,247,241,0.96)_0%,rgba(255,255,255,0.96)_55%,rgba(250,250,249,0.94)_100%)] shadow-[0_22px_50px_-36px_rgba(89,47,37,0.45)]";
   }
 
   if (isToday) {
-    return "border-brand-100 bg-brand-50/40";
+    return "border-brand-100 bg-brand-50/35";
   }
 
   return "border-stone-200 bg-white";
@@ -145,21 +146,23 @@ export default function DayCard({
   }
 
   return (
-    <section className={`card border p-4 transition-colors ${getCardClassName({ featured, isToday })}`}>
-      <div className="flex items-start justify-between gap-4">
+    <section
+      className={`card animate-card-in border p-4 transition-colors ${getCardClassName({
+        featured,
+        isToday,
+      })}`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold text-stone-900">{day.label}</h2>
-            {badgeLabel && (
-              <span className="inline-flex items-center rounded-full bg-brand-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-                {badgeLabel}
-              </span>
-            )}
+            <h2 className="text-lg font-semibold text-stone-950">{day.label}</h2>
+            {badgeLabel && <span className="badge badge-brand">{badgeLabel}</span>}
           </div>
           <p className="text-sm text-stone-500">{day.shortLabel}</p>
         </div>
 
-        <button className="btn-secondary shrink-0" onClick={openCreateForm} type="button">
+        <button className="btn-secondary w-full shrink-0 sm:w-auto" onClick={openCreateForm} type="button">
+          <Plus className="mr-2 h-4 w-4" aria-hidden="true" />
           Agregar corte
         </button>
       </div>
@@ -170,16 +173,20 @@ export default function DayCard({
         }`}
       >
         <div className="overflow-hidden">
-          <form className="space-y-3 rounded-2xl bg-stone-50 p-4" onSubmit={handleSubmit}>
+          <form
+            className="space-y-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-4"
+            onSubmit={handleSubmit}
+          >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-stone-800">
+              <p className="text-sm font-semibold text-stone-900">
                 {editingHaircutId ? "Editar corte" : "Agregar corte"}
               </p>
               <button
-                className="text-sm font-medium text-stone-500"
+                className="inline-flex min-h-9 items-center rounded-xl px-2 text-sm font-semibold text-stone-500 transition hover:bg-white hover:text-stone-900"
                 onClick={closeForm}
                 type="button"
               >
+                <X className="mr-1 h-4 w-4" aria-hidden="true" />
                 Cancelar
               </button>
             </div>
@@ -221,10 +228,10 @@ export default function DayCard({
                   { value: "appointment", label: "Con turno" },
                 ].map((option) => (
                   <label
-                    className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                    className={`flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 py-2 text-sm font-semibold transition-all ${
                       formValues.attendance_type === option.value
-                        ? "border-brand-600 bg-brand-50 text-brand-800"
-                        : "border-stone-200 bg-white text-stone-700"
+                        ? "border-brand-500 bg-brand-50 text-brand-800 shadow-[inset_0_0_0_1px_rgba(199,109,69,0.12)]"
+                        : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
                     }`}
                     key={option.value}
                   >
@@ -281,18 +288,22 @@ export default function DayCard({
         </div>
       )}
 
-      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl bg-stone-100 p-3">
-          <p className="text-sm text-stone-500">Cantidad de cortes</p>
-          <p className="mt-1 text-xl font-bold text-stone-900">{haircuts.length}</p>
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+        <div className="rounded-2xl border border-stone-200 bg-white/80 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Cortes</p>
+          <p className="mt-1 text-xl font-semibold text-stone-950">{haircuts.length}</p>
         </div>
-        <div className="rounded-2xl bg-stone-100 p-3">
-          <p className="text-sm text-stone-500">Total del dia</p>
-          <p className="mt-1 text-xl font-bold text-stone-900">{formatCurrency(total)}</p>
+        <div className="rounded-2xl border border-stone-200 bg-white/80 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">Total</p>
+          <p className="mt-1 text-xl font-semibold text-stone-950">{formatCurrency(total)}</p>
         </div>
-        <div className="rounded-2xl bg-brand-50 p-3">
-          <p className="text-sm text-stone-500">Tu comision del dia</p>
-          <p className="mt-1 text-xl font-bold text-brand-700">{formatCurrency(commission)}</p>
+        <div className="rounded-2xl border border-brand-100 bg-brand-50/80 p-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+            Comision
+          </p>
+          <p className="mt-1 text-xl font-semibold text-brand-800">
+            {formatCurrency(commission)}
+          </p>
         </div>
       </div>
 
@@ -305,37 +316,49 @@ export default function DayCard({
           <div className="max-h-[24rem] space-y-3 overflow-y-auto pr-1 sm:max-h-[22rem]">
             {haircuts.map((haircut) => (
               <div
-                className="flex flex-col gap-3 rounded-2xl border border-stone-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                className="tap-card grid gap-3 rounded-2xl border border-stone-200 bg-white/90 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:px-4"
                 key={haircut.id}
               >
-                <div className="min-w-0">
-                  <p className="font-semibold text-stone-900">{haircut.service}</p>
-                  <p className="text-sm text-stone-500">
-                    Comision: {formatCurrency(haircut.commission_amount)}
-                  </p>
-                  <p className="mt-1 text-sm text-stone-500">
-                    {formatAttendanceType(haircut.attendance_type)} ·{" "}
+                <div className="flex items-center gap-2 text-sm font-semibold text-stone-600 sm:block sm:min-w-[4.5rem]">
+                  <Clock className="h-4 w-4 text-brand-700 sm:mx-auto sm:mb-1" aria-hidden="true" />
+                  <span className="sm:block sm:text-center">
                     {formatArgentinaTime(haircut.recorded_at ?? haircut.created_at)}
-                  </p>
+                  </span>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:items-end">
-                  <p className="font-bold text-stone-900">{formatCurrency(haircut.price)}</p>
+                <div className="min-w-0">
+                  <p className="break-words font-semibold text-stone-950">{haircut.service}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="badge normal-case tracking-normal">
+                      {formatAttendanceType(haircut.attendance_type)}
+                    </span>
+                    <span className="text-sm text-stone-500">
+                      Comision: {formatCurrency(haircut.commission_amount)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-end justify-between gap-3 sm:flex-col sm:items-end">
+                  <p className="text-lg font-semibold text-stone-950">
+                    {formatCurrency(haircut.price)}
+                  </p>
                   <div className="flex gap-2">
                     <button
-                      className="rounded-xl border border-stone-200 px-3 py-1.5 text-sm font-medium text-stone-700"
+                      className="inline-flex min-h-9 items-center rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-sm font-semibold text-stone-700 transition hover:border-stone-300 hover:bg-stone-50"
                       disabled={saving}
                       onClick={() => openEditForm(haircut)}
                       type="button"
                     >
+                      <Pencil className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                       Editar
                     </button>
                     <button
-                      className="rounded-xl border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700"
+                      className="inline-flex min-h-9 items-center rounded-xl border border-red-200 bg-white px-3 py-1.5 text-sm font-semibold text-red-700 transition hover:bg-red-50"
                       disabled={saving}
                       onClick={() => setHaircutToDelete(haircut)}
                       type="button"
                     >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                       Eliminar
                     </button>
                   </div>

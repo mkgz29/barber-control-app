@@ -28,10 +28,10 @@ function NavItem({ to, label }) {
     <NavLink
       to={to}
       className={({ isActive }) =>
-        `inline-flex items-center justify-center rounded-full px-4 py-2.5 text-sm font-semibold transition-all duration-200 ${
+        `inline-flex min-h-11 flex-1 items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-semibold transition-all duration-200 sm:flex-none ${
           isActive
-            ? "bg-stone-900 text-white shadow-[0_12px_30px_-18px_rgba(28,25,23,0.7)]"
-            : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50 hover:text-stone-900 hover:ring-stone-300"
+            ? "bg-stone-950 text-white shadow-[0_12px_26px_-18px_rgba(28,25,23,0.7)]"
+            : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50 hover:text-stone-950 hover:ring-stone-300"
         }`
       }
     >
@@ -46,23 +46,23 @@ export default function AppShell() {
   const userInitial = getUserInitial(profile);
 
   return (
-    <div className="min-h-screen px-4 pb-24 pt-5 md:px-6">
+    <div className="min-h-screen px-3 pb-20 pt-3 sm:px-4 sm:pt-5 md:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
-        <header className="card overflow-hidden border-white/60">
-          <div className="bg-[linear-gradient(135deg,#1c1917_0%,#292524_52%,#44403c_100%)] px-5 py-5 text-white sm:px-6">
+        <header className="card overflow-hidden">
+          <div className="bg-[linear-gradient(135deg,#1c1917_0%,#292524_58%,#3b332f_100%)] px-4 py-5 text-white sm:px-6">
             <div className="flex flex-col gap-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-200/90">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] text-brand-200/90">
                     Agenda Barber
                   </p>
-                  <p className="mt-2 max-w-xl text-sm text-stone-300">
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-stone-300">
                     Panel de gestion semanal para tu barberia.
                   </p>
                 </div>
 
                 <button
-                  className="inline-flex shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-stone-200 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-brand-200"
+                  className="inline-flex min-h-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-stone-200 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-4 focus:ring-brand-200/25 active:scale-[0.98]"
                   onClick={signOut}
                 >
                   Salir
@@ -71,7 +71,7 @@ export default function AppShell() {
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex min-w-0 items-center gap-4">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-lg font-bold text-white shadow-inner shadow-black/10">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-lg font-bold text-white shadow-inner shadow-black/10 sm:h-14 sm:w-14">
                     {userInitial}
                   </div>
 
@@ -89,20 +89,15 @@ export default function AppShell() {
                         </span>
                       )}
                     </div>
-                    <p
-                      className="mt-1 truncate text-sm text-stone-300"
-                      title={profile?.email || ""}
-                    >
-                      {profile?.email}
-                    </p>
+                    <p className="mt-1 text-sm text-stone-300">Panel de cortes</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-stone-200/80 bg-white/70 px-4 py-4 sm:px-5">
-            <nav className="flex flex-wrap gap-2 sm:gap-3">
+          <div className="border-t border-stone-200/80 bg-white/75 px-3 py-3 sm:px-5 sm:py-4">
+            <nav className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:gap-3">
               <NavItem to="/semana" label="Semana" />
               <NavItem to="/resumen-mensual" label="Mes" />
               <NavItem to="/perfil" label="Perfil" />

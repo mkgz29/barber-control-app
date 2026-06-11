@@ -5,8 +5,8 @@
 :root {
   color: #1c1917;
   background:
-    radial-gradient(circle at top, rgba(251, 191, 36, 0.18), transparent 30%),
-    linear-gradient(180deg, #fff9f0 0%, #f5f5f4 45%, #e7e5e4 100%);
+    radial-gradient(circle at 15% 0%, rgba(199, 109, 69, 0.1), transparent 30rem),
+    linear-gradient(180deg, #fbfaf8 0%, #f5f3f0 48%, #efede9 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,6 +21,7 @@ body,
 
 body {
   margin: 0;
+  overflow-x: hidden;
 }
 
 input,
@@ -32,18 +33,63 @@ textarea {
 
 @layer components {
   .card {
-    @apply rounded-3xl border border-white/70 bg-white/90 shadow-warm backdrop-blur;
+    @apply rounded-[1.35rem] border border-stone-200/70 bg-white/90 shadow-warm backdrop-blur;
+  }
+
+  .surface {
+    @apply rounded-[1.35rem] border border-stone-200/70 bg-white/75 shadow-soft backdrop-blur;
+  }
+
+  .section-title {
+    @apply text-xl font-semibold tracking-normal text-stone-950 sm:text-2xl;
+  }
+
+  .eyebrow {
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-brand-700;
+  }
+
+  .muted-text {
+    @apply text-sm leading-6 text-stone-500;
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-stone-600;
+  }
+
+  .badge-brand {
+    @apply border-brand-200 bg-brand-50 text-brand-800;
   }
 
   .input {
-    @apply w-full rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3.5 text-base text-stone-900 outline-none transition placeholder:text-stone-400 hover:border-stone-300 focus:border-brand-500 focus:ring-2 focus:ring-brand-200 sm:py-3;
+    @apply w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-900 outline-none transition duration-200 placeholder:text-stone-400 hover:border-stone-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 sm:text-sm;
   }
 
   .btn-primary {
-    @apply inline-flex min-h-[3.5rem] items-center justify-center rounded-2xl bg-stone-900 px-4 py-3.5 text-base font-semibold text-white shadow-[0_14px_30px_rgba(28,25,23,0.2)] transition hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[3.25rem] sm:py-3;
+    @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-stone-950 px-4 py-3 text-sm font-semibold text-white shadow-[0_14px_26px_-18px_rgba(28,25,23,0.75)] transition duration-200 hover:-translate-y-0.5 hover:bg-stone-800 focus:outline-none focus:ring-4 focus:ring-stone-300/50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-2xl border border-stone-300 bg-white px-4 py-3 font-semibold text-stone-700 transition hover:border-stone-400 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60;
+    @apply inline-flex min-h-11 items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 shadow-[0_8px_20px_-18px_rgba(28,25,23,0.8)] transition duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus:ring-4 focus:ring-brand-100 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+  }
+
+  .tap-card {
+    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-26px_rgba(28,25,23,0.42)] active:translate-y-0;
+  }
+}
+
+@layer utilities {
+  .animate-card-in {
+    animation: card-in 360ms ease-out both;
+  }
+}
+
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

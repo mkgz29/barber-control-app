@@ -5,23 +5,24 @@ export default {
     extend: {
       colors: {
         brand: {
-          50: "#fff8eb",
-          100: "#ffefc7",
-          200: "#ffe08b",
-          300: "#ffd067",
-          400: "#f4b647",
-          500: "#d99727",
-          600: "#b9781e",
-          700: "#8c5918",
-          800: "#6e4717",
-          900: "#593c18"
+          50: "#fff7f1",
+          100: "#ffe8d9",
+          200: "#f8cfb8",
+          300: "#edae8f",
+          400: "#de8a62",
+          500: "#c76d45",
+          600: "#a95334",
+          700: "#85402c",
+          800: "#6c3729",
+          900: "#592f25"
         }
       },
       fontFamily: {
-        sans: ["'Segoe UI'", "system-ui", "sans-serif"]
+        sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "BlinkMacSystemFont", "'Segoe UI'", "sans-serif"]
       },
       boxShadow: {
-        warm: "0 20px 50px rgba(15, 23, 42, 0.18)"
+        warm: "0 18px 45px rgba(28, 25, 23, 0.08)",
+        soft: "0 10px 30px rgba(28, 25, 23, 0.06)"
       }
     }
   },

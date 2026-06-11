@@ -6,13 +6,9 @@ import WeeklyRanking from "../components/WeeklyRanking";
 import { useAuth } from "../context/AuthContext";
 import {
   formatBusinessWeekRange,
-  formatCurrency,
   getArgentinaTodayValue,
   getBusinessWeekDays,
   getBusinessWeekRange,
-  getCurrentMonthValue,
-  getMonthRange,
-  groupHaircutsByBusinessWeeks,
   toDateInputValue,
 } from "../lib/date";
 import supabase from "../lib/supabaseClient";
@@ -36,7 +32,6 @@ export default function DashboardPage() {
   const { user, profile } = useAuth();
   const [haircuts, setHaircuts] = useState([]);
   const [weeklyMetricHaircuts, setWeeklyMetricHaircuts] = useState([]);
-  const [monthlyMetricHaircuts, setMonthlyMetricHaircuts] = useState([]);
   const [weeklyRanking, setWeeklyRanking] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,13 +39,11 @@ export default function DashboardPage() {
   const [rankingError, setRankingError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
   const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
-  const [selectedMonthlyWeekKey, setSelectedMonthlyWeekKey] = useState("");
   const [defaultWeeklyOpen] = useState(getDefaultWeeklyOpen);
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
   const isAdmin = profile?.role === "admin";
-  const currentMonth = todayDate.slice(0, 7) || getCurrentMonthValue();
   const weekRangeLabel = formatBusinessWeekRange(weekRange);
 
   const haircutsByDay = useMemo(() => {
@@ -107,7 +100,6 @@ export default function DashboardPage() {
 
     const weekStart = toDateInputValue(weekRange.start);
     const weekEnd = toDateInputValue(weekRange.end);
-    const monthRange = getMonthRange(currentMonth);
     const weeklyMetricsQuery = supabase
       .from("haircuts")
       .select("*")
@@ -115,24 +107,15 @@ export default function DashboardPage() {
       .lte("haircut_date", weekEnd)
       .order("haircut_date", { ascending: true })
       .order("created_at", { ascending: false });
-    const monthlyMetricsQuery = supabase
-      .from("haircuts")
-      .select("*")
-      .gte("haircut_date", monthRange.start)
-      .lte("haircut_date", monthRange.end)
-      .order("haircut_date", { ascending: true })
-      .order("created_at", { ascending: true });
 
     if (!isAdmin) {
       weeklyMetricsQuery.eq("user_id", user.id);
-      monthlyMetricsQuery.eq("user_id", user.id);
     }
 
     try {
       const [
         { data: weeklyUserHaircuts, error: fetchError },
         { data: weeklyMetrics, error: weeklyMetricsError },
-        { data: monthlyMetrics, error: monthlyMetricsError },
         { data: globalWeeklyHaircuts, error: globalFetchError },
       ] = await Promise.all([
         supabase
@@ -144,7 +127,6 @@ export default function DashboardPage() {
           .order("haircut_date", { ascending: true })
           .order("created_at", { ascending: false }),
         weeklyMetricsQuery,
-        monthlyMetricsQuery,
         isAdmin
           ? supabase.rpc("get_global_weekly_haircuts", {
               reference_date: weekStart,
@@ -160,17 +142,12 @@ export default function DashboardPage() {
         throw weeklyMetricsError;
       }
 
-      if (monthlyMetricsError) {
-        throw monthlyMetricsError;
-      }
-
       if (globalFetchError) {
         setRankingError(globalFetchError.message || "No se pudo cargar el ranking semanal.");
       }
 
       setHaircuts(weeklyUserHaircuts || []);
       setWeeklyMetricHaircuts(weeklyMetrics || []);
-      setMonthlyMetricHaircuts(monthlyMetrics || []);
       setWeeklyRanking(globalWeeklyHaircuts || []);
     } catch (loadError) {
       setError(loadError.message || "No se pudieron cargar los cortes.");
@@ -181,7 +158,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     loadHaircuts();
-  }, [user?.id, profile?.role, weekRange.start.getTime(), currentMonth]);
+  }, [user?.id, profile?.role, weekRange.start.getTime()]);
 
   function buildHaircutPayload(values) {
     const commissionPercentage = Number(profile?.commission_percentage || 0);
@@ -274,42 +251,6 @@ export default function DashboardPage() {
     0
   );
   const weeklyCutsCount = weeklyMetricHaircuts.length;
-  const monthlyWeekBlocks = useMemo(
-    () => groupHaircutsByBusinessWeeks(monthlyMetricHaircuts, currentMonth),
-    [currentMonth, monthlyMetricHaircuts]
-  );
-  const monthlyCutsCount = monthlyWeekBlocks.reduce((sum, block) => sum + block.count, 0);
-  const bestMonthlyWeek = monthlyWeekBlocks.reduce(
-    (best, block) => (block.count > best.count ? block : best),
-    { label: "Sin datos", count: 0 }
-  );
-  const maxMonthlyWeekCuts = Math.max(...monthlyWeekBlocks.map((block) => block.count), 0);
-  const currentMonthlyWeek = monthlyWeekBlocks.find(
-    (block) => todayDate >= block.start && todayDate <= block.end
-  );
-  const lastAvailableMonthlyWeek = [...monthlyWeekBlocks]
-    .reverse()
-    .find((block) => block.start <= todayDate);
-  const selectedMonthlyWeek =
-    monthlyWeekBlocks.find(
-      (block) => block.key === selectedMonthlyWeekKey && block.start <= todayDate
-    ) ??
-    currentMonthlyWeek ??
-    lastAvailableMonthlyWeek ??
-    monthlyWeekBlocks[0] ??
-    null;
-  const monthlySummaryCards = [
-    {
-      key: "best-week",
-      title: "Semana con mas cortes",
-      value: bestMonthlyWeek.count > 0 ? `${bestMonthlyWeek.label}: ${bestMonthlyWeek.count}` : "Sin datos",
-    },
-    {
-      key: "month-count",
-      title: "Total de cortes del mes",
-      value: monthlyCutsCount,
-    },
-  ];
   const weeklySummaryCards = [
     {
       key: "cuts",
@@ -327,14 +268,6 @@ export default function DashboardPage() {
     },
   ];
 
-  useEffect(() => {
-    if (!selectedMonthlyWeek || selectedMonthlyWeekKey === selectedMonthlyWeek.key) {
-      return;
-    }
-
-    setSelectedMonthlyWeekKey(selectedMonthlyWeek.key);
-  }, [selectedMonthlyWeek?.key, selectedMonthlyWeekKey]);
-
   return (
     <div className="space-y-5">
       <CollapsibleSection
@@ -343,22 +276,19 @@ export default function DashboardPage() {
         eyebrow="Semana de pago"
         title="Resumen semanal"
       >
-        <div className="card p-5 sm:p-6">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-                Resumen semanal
-              </p>
-              <h1 className="mt-2 text-3xl font-bold text-stone-900">Resumen semanal</h1>
-              <p className="mt-2 text-sm text-stone-600">{weekRangeLabel}</p>
-            </div>
-            <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-600">
-              Comision actual: <strong>{Number(profile?.commission_percentage || 0)}%</strong>
+        <div className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="muted-text">{weekRangeLabel}</p>
+            <div className="inline-flex w-fit items-center rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm text-stone-600">
+              Comision actual:{" "}
+              <strong className="ml-1 text-stone-950">
+                {Number(profile?.commission_percentage || 0)}%
+              </strong>
             </div>
           </div>
 
           <div
-            className={`mt-6 grid gap-4 ${
+            className={`grid gap-3 ${
               weeklySummaryCards.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"
             }`}
           >
@@ -375,149 +305,8 @@ export default function DashboardPage() {
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection
-        defaultOpen={false}
-        description="Filtros y detalle por semanas del mes"
-        eyebrow="Mes actual"
-        title="Resumen mensual"
-      >
-        <div className="card p-5 sm:p-6">
-          <div className="border-b border-stone-200 pb-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-              Resumen mensual por semanas
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-stone-900">
-              Actividad por semanas de pago
-            </h2>
-            <p className="mt-1 text-sm text-stone-600">
-              Agrupado por semanas comerciales de sabado a viernes.
-            </p>
-          </div>
-
-          {monthlyCutsCount === 0 && (
-            <div className="mt-5 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">
-              Todavia no hay cortes suficientes para mostrar estadisticas mensuales.
-            </div>
-          )}
-
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            {monthlySummaryCards.map((card) => (
-              <StatCard key={card.key} title={card.title} value={card.value} />
-            ))}
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            {monthlyWeekBlocks.map((block) => {
-              const isFuture = block.start > todayDate;
-              const isSelected = selectedMonthlyWeek?.key === block.key;
-
-              return (
-                <button
-                  className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                    isSelected
-                      ? "border-brand-600 bg-brand-600 text-white"
-                      : isFuture
-                        ? "cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400"
-                        : "border-stone-200 bg-white text-stone-700 hover:border-brand-300 hover:bg-brand-50"
-                  }`}
-                  disabled={isFuture}
-                  key={block.key}
-                  onClick={() => setSelectedMonthlyWeekKey(block.key)}
-                  type="button"
-                >
-                  {block.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {selectedMonthlyWeek && (
-            <div className="mt-5 rounded-2xl border border-stone-200 bg-white p-4">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
-                    {selectedMonthlyWeek.label}
-                  </p>
-                  <h3 className="mt-1 text-lg font-bold text-stone-900">
-                    {selectedMonthlyWeek.displayRange}
-                  </h3>
-                </div>
-                <p className="text-sm font-semibold text-stone-600">
-                  {selectedMonthlyWeek.count}{" "}
-                  {selectedMonthlyWeek.count === 1 ? "corte" : "cortes"}
-                </p>
-              </div>
-
-              {selectedMonthlyWeek.count === 0 ? (
-                <p className="mt-4 rounded-xl bg-stone-50 px-3 py-3 text-sm text-stone-500">
-                  Todavia no hay cortes cargados en esta semana.
-                </p>
-              ) : (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {isAdmin && (
-                    <div className="rounded-xl bg-stone-50 p-3">
-                      <p className="text-sm text-stone-500">Total bruto</p>
-                      <p className="mt-1 text-xl font-bold text-stone-900">
-                        {formatCurrency(selectedMonthlyWeek.gross)}
-                      </p>
-                    </div>
-                  )}
-                  <div className="rounded-xl bg-brand-50 p-3">
-                    <p className="text-sm text-stone-500">
-                      {isAdmin ? "Comision total" : "Tu comision"}
-                    </p>
-                    <p className="mt-1 text-xl font-bold text-brand-700">
-                      {formatCurrency(selectedMonthlyWeek.commission)}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection
-        defaultOpen={false}
-        description="Comparacion visual de cortes por semana mensual"
-        eyebrow="Grafico"
-        title="Actividad por semanas de pago"
-      >
-        <div className="card p-5 sm:p-6">
-          <div className="rounded-2xl bg-stone-50 p-4">
-            <div className="grid min-h-64 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-              {monthlyWeekBlocks.map((block) => {
-                const height =
-                  maxMonthlyWeekCuts > 0 ? (block.count / maxMonthlyWeekCuts) * 100 : 0;
-                const isFuture = block.start > todayDate;
-
-                return (
-                  <div className="flex min-w-0 flex-col items-center gap-3" key={block.key}>
-                    <div className="flex h-40 w-full max-w-[7rem] items-end rounded-2xl border border-white bg-white px-3 py-3 shadow-sm">
-                      <div
-                        className={`w-full rounded-xl transition-all ${
-                          isFuture
-                            ? "bg-stone-200"
-                            : "bg-gradient-to-t from-brand-700 via-brand-600 to-emerald-300"
-                        }`}
-                        style={{ height: `${Math.max(height, block.count > 0 ? 10 : 0)}%` }}
-                        title={`${block.displayRange}: ${block.count} cortes`}
-                      />
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs font-semibold text-stone-700">{block.label}</p>
-                      <p className="text-xs text-stone-500">{block.count} cortes</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </CollapsibleSection>
-
       {isAdmin && rankingError && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-2xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900">
           {rankingError}
         </div>
       )}
@@ -534,11 +323,11 @@ export default function DashboardPage() {
       )}
 
       {!loading && todayDay && (
-        <section className="card space-y-5 p-6">
+        <section className="card animate-card-in space-y-5 p-4 sm:p-6">
           <div className="border-b border-stone-200 pb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-700">Hoy</p>
-            <h2 className="mt-2 text-2xl font-bold text-stone-900">Cortes del dia</h2>
-            <p className="mt-1 text-sm text-stone-600">
+            <p className="eyebrow">Hoy</p>
+            <h2 className="section-title mt-2">Cortes del dia</h2>
+            <p className="muted-text mt-1">
               Registra y revisa la actividad de hoy.
             </p>
           </div>
@@ -566,13 +355,13 @@ export default function DashboardPage() {
       {loading ? (
         <div className="card p-6 text-center text-sm text-stone-500">Cargando cortes...</div>
       ) : (
-        <section className="card space-y-5 p-6">
+        <section className="card animate-card-in space-y-5 p-4 sm:p-6">
           <div className="border-b border-stone-200 pb-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.28em] text-stone-500">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
               Semana completa
             </p>
-            <h2 className="mt-2 text-2xl font-bold text-stone-900">Resto de la semana</h2>
-            <p className="mt-1 text-sm text-stone-600">
+            <h2 className="section-title mt-2">Resto de la semana</h2>
+            <p className="muted-text mt-1">
               Consulta y actualiza los cortes de los demas dias.
             </p>
           </div>
