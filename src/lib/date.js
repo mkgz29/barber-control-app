@@ -82,12 +82,7 @@ function addDays(dateValue, amount) {
 }
 
 function getHaircutDateValue(haircut) {
-  if (haircut?.haircut_date) {
-    return haircut.haircut_date;
-  }
-
-  const fallbackDate = haircut?.recorded_at ?? haircut?.created_at;
-  return fallbackDate ? getArgentinaDateValue(new Date(fallbackDate)) : null;
+  return haircut?.haircut_date ?? null;
 }
 
 export function toDateInputValue(date) {
@@ -199,12 +194,16 @@ export function getBusinessMonthWeekBlocks(monthValue = getCurrentMonthValue()) 
   const [year, month] = monthValue.split("-").map(Number);
   const monthStart = toDateInputValue(new Date(year, month - 1, 1, 12));
   const monthEnd = toDateInputValue(new Date(year, month, 0, 12));
-  let currentStart = toDateInputValue(getBusinessWeekRange(monthStart).start);
+  let currentStart = monthStart;
   const blocks = [];
 
   while (currentStart <= monthEnd) {
+    const { end: businessWeekEnd } = getBusinessWeekRange(currentStart);
+    const clippedEnd = toDateInputValue(businessWeekEnd) > monthEnd
+      ? parseDateValue(monthEnd)
+      : businessWeekEnd;
     const weekStart = parseDateValue(currentStart);
-    const weekEnd = addDays(currentStart, 6);
+    const weekEnd = clippedEnd;
 
     blocks.push({
       key: currentStart,
@@ -220,7 +219,7 @@ export function getBusinessMonthWeekBlocks(monthValue = getCurrentMonthValue()) 
       commission: 0,
     });
 
-    currentStart = toDateInputValue(addDays(currentStart, 7));
+    currentStart = toDateInputValue(addDays(toDateInputValue(weekEnd), 1));
   }
 
   return blocks;

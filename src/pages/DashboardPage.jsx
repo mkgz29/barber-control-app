@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import CollapsibleSection from "../components/CollapsibleSection";
 import DayCard from "../components/DayCard";
 import StatCard from "../components/StatCard";
 import WeeklyRanking from "../components/WeeklyRanking";
 import { useAuth } from "../context/AuthContext";
 import {
   formatBusinessWeekRange,
+  formatCurrency,
   getArgentinaTodayValue,
   getBusinessWeekDays,
   getBusinessWeekRange,
@@ -22,6 +24,14 @@ function buildCurrentWeekState(referenceDate = new Date()) {
   };
 }
 
+function getDefaultWeeklyOpen() {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  return window.matchMedia("(min-width: 768px)").matches;
+}
+
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const [haircuts, setHaircuts] = useState([]);
@@ -34,6 +44,8 @@ export default function DashboardPage() {
   const [rankingError, setRankingError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
   const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
+  const [selectedMonthlyWeekKey, setSelectedMonthlyWeekKey] = useState("");
+  const [defaultWeeklyOpen] = useState(getDefaultWeeklyOpen);
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
@@ -267,17 +279,25 @@ export default function DashboardPage() {
     [currentMonth, monthlyMetricHaircuts]
   );
   const monthlyCutsCount = monthlyWeekBlocks.reduce((sum, block) => sum + block.count, 0);
-  const monthlyCommission = monthlyWeekBlocks.reduce(
-    (sum, block) => sum + block.commission,
-    0
-  );
   const bestMonthlyWeek = monthlyWeekBlocks.reduce(
     (best, block) => (block.count > best.count ? block : best),
     { label: "Sin datos", count: 0 }
   );
-  const averageWeeklyCuts =
-    monthlyWeekBlocks.length > 0 ? monthlyCutsCount / monthlyWeekBlocks.length : 0;
   const maxMonthlyWeekCuts = Math.max(...monthlyWeekBlocks.map((block) => block.count), 0);
+  const currentMonthlyWeek = monthlyWeekBlocks.find(
+    (block) => todayDate >= block.start && todayDate <= block.end
+  );
+  const lastAvailableMonthlyWeek = [...monthlyWeekBlocks]
+    .reverse()
+    .find((block) => block.start <= todayDate);
+  const selectedMonthlyWeek =
+    monthlyWeekBlocks.find(
+      (block) => block.key === selectedMonthlyWeekKey && block.start <= todayDate
+    ) ??
+    currentMonthlyWeek ??
+    lastAvailableMonthlyWeek ??
+    monthlyWeekBlocks[0] ??
+    null;
   const monthlySummaryCards = [
     {
       key: "best-week",
@@ -285,20 +305,9 @@ export default function DashboardPage() {
       value: bestMonthlyWeek.count > 0 ? `${bestMonthlyWeek.label}: ${bestMonthlyWeek.count}` : "Sin datos",
     },
     {
-      key: "weekly-average",
-      title: "Promedio semanal",
-      value: averageWeeklyCuts.toFixed(1),
-    },
-    {
       key: "month-count",
       title: "Total de cortes del mes",
       value: monthlyCutsCount,
-    },
-    {
-      key: "month-commission",
-      money: true,
-      title: isAdmin ? "Comision mensual estimada" : "Tu comision mensual estimada",
-      value: monthlyCommission,
     },
   ];
   const weeklySummaryCards = [
@@ -318,90 +327,194 @@ export default function DashboardPage() {
     },
   ];
 
+  useEffect(() => {
+    if (!selectedMonthlyWeek || selectedMonthlyWeekKey === selectedMonthlyWeek.key) {
+      return;
+    }
+
+    setSelectedMonthlyWeekKey(selectedMonthlyWeek.key);
+  }, [selectedMonthlyWeek?.key, selectedMonthlyWeekKey]);
+
   return (
     <div className="space-y-5">
-      <section className="card p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
+      <CollapsibleSection
+        defaultOpen={defaultWeeklyOpen}
+        description={weekRangeLabel}
+        eyebrow="Semana de pago"
+        title="Resumen semanal"
+      >
+        <div className="card p-5 sm:p-6">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
+                Resumen semanal
+              </p>
+              <h1 className="mt-2 text-3xl font-bold text-stone-900">Resumen semanal</h1>
+              <p className="mt-2 text-sm text-stone-600">{weekRangeLabel}</p>
+            </div>
+            <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-600">
+              Comision actual: <strong>{Number(profile?.commission_percentage || 0)}%</strong>
+            </div>
+          </div>
+
+          <div
+            className={`mt-6 grid gap-4 ${
+              weeklySummaryCards.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"
+            }`}
+          >
+            {weeklySummaryCards.map((card) => (
+              <StatCard
+                highlight={card.highlight}
+                key={card.key}
+                money={card.money}
+                title={card.title}
+                value={card.value}
+              />
+            ))}
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        defaultOpen={false}
+        description="Filtros y detalle por semanas del mes"
+        eyebrow="Mes actual"
+        title="Resumen mensual"
+      >
+        <div className="card p-5 sm:p-6">
+          <div className="border-b border-stone-200 pb-4">
             <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-              Resumen semanal
+              Resumen mensual por semanas
             </p>
-            <h1 className="mt-2 text-3xl font-bold text-stone-900">Resumen semanal</h1>
-            <p className="mt-2 text-sm text-stone-600">{weekRangeLabel}</p>
+            <h2 className="mt-2 text-2xl font-bold text-stone-900">
+              Actividad por semanas de pago
+            </h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Agrupado por semanas comerciales de sabado a viernes.
+            </p>
           </div>
-          <div className="rounded-2xl bg-stone-100 px-4 py-3 text-sm text-stone-600">
-            Comision actual: <strong>{Number(profile?.commission_percentage || 0)}%</strong>
-          </div>
-        </div>
 
-        <div
-          className={`mt-6 grid gap-4 ${
-            weeklySummaryCards.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"
-          }`}
-        >
-          {weeklySummaryCards.map((card) => (
-            <StatCard
-              highlight={card.highlight}
-              key={card.key}
-              money={card.money}
-              title={card.title}
-              value={card.value}
-            />
-          ))}
-        </div>
-      </section>
-
-      <section className="card p-6">
-        <div className="border-b border-stone-200 pb-4">
-          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-            Resumen mensual por semanas
-          </p>
-          <h2 className="mt-2 text-2xl font-bold text-stone-900">
-            Actividad por semanas de pago
-          </h2>
-          <p className="mt-1 text-sm text-stone-600">
-            Agrupado por semanas comerciales de sabado a viernes.
-          </p>
-        </div>
-
-        {monthlyCutsCount === 0 ? (
-          <div className="mt-5 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">
-            Todavia no hay cortes suficientes para mostrar estadisticas mensuales.
-          </div>
-        ) : (
-          <>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {monthlySummaryCards.map((card) => (
-                <StatCard key={card.key} money={card.money} title={card.title} value={card.value} />
-              ))}
+          {monthlyCutsCount === 0 && (
+            <div className="mt-5 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">
+              Todavia no hay cortes suficientes para mostrar estadisticas mensuales.
             </div>
+          )}
 
-            <div className="mt-6 rounded-2xl bg-stone-50 p-4">
-              <div className="flex h-48 items-end gap-3">
-                {monthlyWeekBlocks.map((block) => {
-                  const height = maxMonthlyWeekCuts > 0 ? (block.count / maxMonthlyWeekCuts) * 100 : 0;
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {monthlySummaryCards.map((card) => (
+              <StatCard key={card.key} title={card.title} value={card.value} />
+            ))}
+          </div>
 
-                  return (
-                    <div className="flex min-w-0 flex-1 flex-col items-center gap-2" key={block.key}>
-                      <div className="flex h-36 w-full items-end rounded-xl bg-white px-2 py-2">
-                        <div
-                          className="w-full rounded-lg bg-brand-600 transition-all"
-                          style={{ height: `${Math.max(height, block.count > 0 ? 8 : 0)}%` }}
-                          title={`${block.displayRange}: ${block.count} cortes`}
-                        />
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs font-semibold text-stone-700">{block.label}</p>
-                        <p className="text-xs text-stone-500">{block.count} cortes</p>
-                      </div>
-                    </div>
-                  );
-                })}
+          <div className="mt-5 flex flex-wrap gap-2">
+            {monthlyWeekBlocks.map((block) => {
+              const isFuture = block.start > todayDate;
+              const isSelected = selectedMonthlyWeek?.key === block.key;
+
+              return (
+                <button
+                  className={`min-h-11 rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                    isSelected
+                      ? "border-brand-600 bg-brand-600 text-white"
+                      : isFuture
+                        ? "cursor-not-allowed border-stone-200 bg-stone-100 text-stone-400"
+                        : "border-stone-200 bg-white text-stone-700 hover:border-brand-300 hover:bg-brand-50"
+                  }`}
+                  disabled={isFuture}
+                  key={block.key}
+                  onClick={() => setSelectedMonthlyWeekKey(block.key)}
+                  type="button"
+                >
+                  {block.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {selectedMonthlyWeek && (
+            <div className="mt-5 rounded-2xl border border-stone-200 bg-white p-4">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.2em] text-brand-700">
+                    {selectedMonthlyWeek.label}
+                  </p>
+                  <h3 className="mt-1 text-lg font-bold text-stone-900">
+                    {selectedMonthlyWeek.displayRange}
+                  </h3>
+                </div>
+                <p className="text-sm font-semibold text-stone-600">
+                  {selectedMonthlyWeek.count}{" "}
+                  {selectedMonthlyWeek.count === 1 ? "corte" : "cortes"}
+                </p>
               </div>
+
+              {selectedMonthlyWeek.count === 0 ? (
+                <p className="mt-4 rounded-xl bg-stone-50 px-3 py-3 text-sm text-stone-500">
+                  Todavia no hay cortes cargados en esta semana.
+                </p>
+              ) : (
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {isAdmin && (
+                    <div className="rounded-xl bg-stone-50 p-3">
+                      <p className="text-sm text-stone-500">Total bruto</p>
+                      <p className="mt-1 text-xl font-bold text-stone-900">
+                        {formatCurrency(selectedMonthlyWeek.gross)}
+                      </p>
+                    </div>
+                  )}
+                  <div className="rounded-xl bg-brand-50 p-3">
+                    <p className="text-sm text-stone-500">
+                      {isAdmin ? "Comision total" : "Tu comision"}
+                    </p>
+                    <p className="mt-1 text-xl font-bold text-brand-700">
+                      {formatCurrency(selectedMonthlyWeek.commission)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
-          </>
-        )}
-      </section>
+          )}
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        defaultOpen={false}
+        description="Comparacion visual de cortes por semana mensual"
+        eyebrow="Grafico"
+        title="Actividad por semanas de pago"
+      >
+        <div className="card p-5 sm:p-6">
+          <div className="rounded-2xl bg-stone-50 p-4">
+            <div className="grid min-h-64 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+              {monthlyWeekBlocks.map((block) => {
+                const height =
+                  maxMonthlyWeekCuts > 0 ? (block.count / maxMonthlyWeekCuts) * 100 : 0;
+                const isFuture = block.start > todayDate;
+
+                return (
+                  <div className="flex min-w-0 flex-col items-center gap-3" key={block.key}>
+                    <div className="flex h-40 w-full max-w-[7rem] items-end rounded-2xl border border-white bg-white px-3 py-3 shadow-sm">
+                      <div
+                        className={`w-full rounded-xl transition-all ${
+                          isFuture
+                            ? "bg-stone-200"
+                            : "bg-gradient-to-t from-brand-700 via-brand-600 to-emerald-300"
+                        }`}
+                        style={{ height: `${Math.max(height, block.count > 0 ? 10 : 0)}%` }}
+                        title={`${block.displayRange}: ${block.count} cortes`}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-semibold text-stone-700">{block.label}</p>
+                      <p className="text-xs text-stone-500">{block.count} cortes</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </CollapsibleSection>
 
       {isAdmin && rankingError && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -409,7 +522,16 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {isAdmin && <WeeklyRanking ranking={weeklyRanking} />}
+      {isAdmin && (
+        <CollapsibleSection
+          defaultOpen={false}
+          description="Top global de cortes de la semana comercial"
+          eyebrow="Admin"
+          title="Ranking semanal"
+        >
+          <WeeklyRanking ranking={weeklyRanking} />
+        </CollapsibleSection>
+      )}
 
       {!loading && todayDay && (
         <section className="card space-y-5 p-6">
