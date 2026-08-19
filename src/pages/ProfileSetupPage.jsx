@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "../context/AuthContext";
 import supabase from "../lib/supabaseClient";
 
@@ -63,21 +67,17 @@ export default function ProfileSetupPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <section className="card p-6 sm:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-          Perfil
-        </p>
-        <h1 className="mt-2 text-3xl font-bold text-stone-900">Completa tu perfil</h1>
-        <p className="mt-2 text-sm leading-6 text-stone-600">
-          Estos datos se usan para identificar tu cuenta y mostrarte correctamente en el ranking.
+    <div className="max-w-2xl">
+      <section className="animate-card-in">
+        <h1 className="text-2xl font-semibold tracking-normal text-slate-950">Perfil</h1>
+        <p className="mt-1 text-sm leading-6 text-slate-500">
+          Datos personales y configuracion de tu cuenta.
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-5 space-y-4 rounded-lg border border-slate-200 bg-white p-4 sm:p-5" onSubmit={handleSubmit}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">Nombre completo</label>
-            <input
-              className="input"
+            <label className="mb-1 block text-sm font-medium text-slate-700">Nombre completo</label>
+            <Input
               placeholder="Ej: Juan Perez"
               value={fullName}
               onChange={(event) => setFullName(event.target.value)}
@@ -86,11 +86,10 @@ export default function ProfileSetupPage() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-stone-700">
+            <label className="mb-1 block text-sm font-medium text-slate-700">
               Nombre de tu barberia
             </label>
-            <input
-              className="input"
+            <Input
               placeholder="Ej: Barberia Chinos"
               value={barbershopName}
               onChange={(event) => setBarbershopName(event.target.value)}
@@ -99,16 +98,23 @@ export default function ProfileSetupPage() {
           </div>
 
           {profile?.commission_percentage != null && (
-            <div className="rounded-2xl bg-brand-50 p-4 text-sm text-stone-700">
-              Tu comision actual es de <strong>{Number(profile.commission_percentage)}%</strong>.
+            <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700">
+              <span>Comision actual</span>
+              <Badge className="border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50" variant="outline">
+                {Number(profile.commission_percentage)}%
+              </Badge>
             </div>
           )}
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <Alert className="border-red-200 bg-red-50 text-red-800" variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-          <button className="btn-primary w-full sm:w-auto" disabled={saving} type="submit">
+          <Button className="w-full bg-sky-600 text-white shadow-none hover:bg-sky-700 sm:w-auto" disabled={saving} type="submit">
             {saving ? "Guardando..." : "Guardar y continuar"}
-          </button>
+          </Button>
         </form>
       </section>
     </div>

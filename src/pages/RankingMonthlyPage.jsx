@@ -1,5 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Award, Medal, Trophy } from "lucide-react";
+import { Trophy } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getArgentinaTodayValue } from "../lib/date";
 import supabase from "../lib/supabaseClient";
 
@@ -14,82 +19,44 @@ function getMonthLabel(dateValue) {
 }
 
 function getRankLabel(position) {
-  return `${position + 1}\u00b0`;
+  return position + 1;
 }
 
-function getPodiumClassName(position) {
-  if (position === 0) {
-    return "border-brand-200 bg-[linear-gradient(145deg,rgba(255,247,241,0.98)_0%,rgba(255,255,255,0.96)_54%,rgba(250,250,249,0.96)_100%)] shadow-[0_24px_56px_-34px_rgba(89,47,37,0.38)]";
-  }
-
-  if (position === 1) {
-    return "border-stone-200 bg-white/95 shadow-[0_18px_42px_-34px_rgba(41,37,36,0.32)]";
-  }
-
-  if (position === 2) {
-    return "border-brand-100 bg-brand-50/45 shadow-[0_16px_36px_-32px_rgba(89,47,37,0.24)]";
-  }
-
-  return "border-stone-200 bg-white/90";
-}
-
-function RankIcon({ position }) {
-  if (position === 0) {
-    return <Trophy className="h-5 w-5" aria-hidden="true" />;
-  }
-
-  if (position < 3) {
-    return <Medal className="h-5 w-5" aria-hidden="true" />;
-  }
-
-  return <Award className="h-5 w-5" aria-hidden="true" />;
-}
-
-function RankingCard({ entry, position }) {
-  const isPodium = position < 3;
+function RankingRow({ entry, position }) {
+  const isTopThree = position < 3;
 
   return (
-    <article
-      className={`tap-card grid gap-3 rounded-[1.35rem] border p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center ${
-        isPodium ? getPodiumClassName(position) : "border-stone-200 bg-white/90"
-      }`}
-    >
-      <div
-        className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold ${
-          position === 0
-            ? "bg-brand-700 text-white"
-            : isPodium
-              ? "bg-stone-950 text-white"
-              : "bg-stone-100 text-stone-700"
-        }`}
-      >
-        <RankIcon position={position} />
-      </div>
+    <div>
+      <div className="grid min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 py-2.5">
+        <div
+          className={`flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold ${
+            isTopThree ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-600"
+          }`}
+        >
+          {getRankLabel(position)}
+        </div>
 
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className={`badge ${isPodium ? "badge-brand" : ""}`}>{getRankLabel(position)}</span>
-          {isPodium && (
-            <span className="badge border-brand-200 bg-brand-50 text-brand-800">
-              Top {position + 1}
-            </span>
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate font-semibold text-slate-950">
+              {entry.barber_name || "Sin nombre"}
+            </p>
+            {isTopThree && (
+              <Badge className="hidden border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50 sm:inline-flex" variant="outline">
+                Top {position + 1}
+              </Badge>
+            )}
+          </div>
+          {entry.barbershop_name && (
+            <p className="truncate text-sm text-slate-500">{entry.barbershop_name}</p>
           )}
         </div>
-        <h2 className="mt-2 break-words text-lg font-semibold text-stone-950">
-          {entry.barber_name || "Sin nombre"}
-        </h2>
-        {entry.barbershop_name && (
-          <p className="mt-1 break-words text-sm text-stone-500">{entry.barbershop_name}</p>
-        )}
-      </div>
 
-      <div className="rounded-2xl border border-stone-200 bg-white/85 px-4 py-3 sm:min-w-[9rem] sm:text-right">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-          Cortes
+        <p className="whitespace-nowrap text-sm font-semibold tabular-nums text-slate-950">
+          {entry.total_cuts} {entry.total_cuts === 1 ? "corte" : "cortes"}
         </p>
-        <p className="mt-1 text-2xl font-semibold text-stone-950">{entry.total_cuts}</p>
       </div>
-    </article>
+    </div>
   );
 }
 
@@ -130,52 +97,51 @@ export default function RankingMonthlyPage() {
 
   return (
     <div className="space-y-5">
-      <section className="card animate-card-in overflow-hidden">
-        <div className="bg-[linear-gradient(135deg,#1c1917_0%,#292524_64%,#3b332f_100%)] px-4 py-6 text-white sm:px-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-brand-200">
-                Ranking mensual
-              </p>
-              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Ranking mensual</h1>
-              <p className="mt-2 text-sm leading-6 text-stone-300">
-                Cortes realizados durante el mes actual
-              </p>
-            </div>
-            <div className="inline-flex w-fit items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-4 py-2.5 text-sm font-semibold capitalize text-white">
-              <Trophy className="h-4 w-4 text-brand-200" aria-hidden="true" />
-              {monthLabel}
-            </div>
+      <section className="animate-card-in space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+              Ranking
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              Cortes realizados durante el mes actual.
+            </p>
           </div>
-        </div>
 
-        <div className="p-4 sm:p-6">
-          {loading ? (
-            <div className="space-y-3">
-              <div className="h-24 animate-pulse rounded-[1.35rem] bg-stone-100" />
-              <div className="h-24 animate-pulse rounded-[1.35rem] bg-stone-100" />
-              <div className="h-24 animate-pulse rounded-[1.35rem] bg-stone-100" />
-            </div>
-          ) : error ? (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : ranking.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-8 text-center text-sm text-stone-500">
-              Todavia no hay cortes cargados este mes.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {ranking.map((entry, index) => (
-                <RankingCard
-                  entry={entry}
-                  key={`${entry.barber_name}-${entry.barbershop_name || "sin-barberia"}-${index}`}
-                  position={index}
-                />
-              ))}
-            </div>
-          )}
+          <Badge className="w-fit border-slate-200 bg-white text-slate-700 hover:bg-white" variant="outline">
+            <Trophy className="mr-1.5 h-3.5 w-3.5 text-sky-600" aria-hidden="true" />
+            <span className="capitalize">{monthLabel}</span>
+          </Badge>
         </div>
+      </section>
+
+      {error && (
+        <Alert className="rounded-lg border-red-200 bg-red-50 text-red-800" variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      <section className="animate-card-in">
+        {loading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-14 rounded-lg bg-slate-200" />
+            <Skeleton className="h-14 rounded-lg bg-slate-200" />
+            <Skeleton className="h-14 rounded-lg bg-slate-200" />
+          </div>
+        ) : ranking.length === 0 ? (
+          <div className="py-6 text-sm text-slate-500">
+            Todavia no hay cortes cargados este mes.
+          </div>
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-white px-3 sm:px-4">
+            {ranking.map((entry, index) => (
+              <div key={`${entry.barber_name}-${entry.barbershop_name || "sin-barberia"}-${index}`}>
+                <RankingRow entry={entry} position={index} />
+                {index < ranking.length - 1 && <Separator className="bg-slate-200" />}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
     </div>
   );

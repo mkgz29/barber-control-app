@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import CollapsibleSection from "../components/CollapsibleSection";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import DayCard from "../components/DayCard";
 import FloatingAddButton from "../components/FloatingAddButton";
-import StatCard from "../components/StatCard";
 import { useAuth } from "../context/AuthContext";
 import {
-  formatBusinessWeekRange,
+  formatCurrency,
   getArgentinaTodayValue,
   getBusinessWeekDays,
   getBusinessWeekRange,
@@ -20,14 +22,6 @@ function buildCurrentWeekState(referenceDate = new Date()) {
   };
 }
 
-function getDefaultWeeklyOpen() {
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  return window.matchMedia("(min-width: 768px)").matches;
-}
-
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const [haircuts, setHaircuts] = useState([]);
@@ -37,12 +31,10 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
   const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
-  const [defaultWeeklyOpen] = useState(getDefaultWeeklyOpen);
   const [todayCreateRequestKey, setTodayCreateRequestKey] = useState(0);
 
   const days = currentWeek.days;
   const weekRange = currentWeek.range;
-  const weekRangeLabel = formatBusinessWeekRange(weekRange);
 
   const haircutsByDay = useMemo(() => {
     return haircuts.reduce((accumulator, haircut) => {
@@ -214,19 +206,6 @@ export default function DashboardPage() {
     0
   );
   const weeklyCutsCount = weeklyMetricHaircuts.length;
-  const weeklySummaryCards = [
-    {
-      key: "cuts",
-      title: "Tus cortes esta semana",
-      value: weeklyCutsCount,
-    },
-    {
-      key: "commission",
-      money: true,
-      title: "Tu comision semanal",
-      value: weeklyCommission,
-    },
-  ];
 
   function handleFloatingAddClick() {
     setTodayCreateRequestKey((current) => current + 1);
@@ -240,62 +219,64 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-5 pb-24">
-      <CollapsibleSection
-        defaultOpen={defaultWeeklyOpen}
-        description={weekRangeLabel}
-        eyebrow="Tu semana de pago"
-        title="Tu resumen semanal"
-      >
-        <div className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="muted-text">{weekRangeLabel}</p>
-            <div className="inline-flex w-fit items-center rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm text-stone-600">
-              Comision actual:{" "}
-              <strong className="ml-1 text-stone-950">
-                {Number(profile?.commission_percentage || 0)}%
-              </strong>
-            </div>
-          </div>
+    <div className="space-y-4 pb-24">
+      <section className="animate-card-in space-y-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+            Semana
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Hoy - {todayDay?.label || "Semana"}
+          </p>
+        </div>
 
-          <div
-            className={`grid gap-3 ${
-              weeklySummaryCards.length > 2 ? "sm:grid-cols-3" : "sm:grid-cols-2"
-            }`}
-          >
-            {weeklySummaryCards.map((card) => (
-              <StatCard
-                highlight={card.highlight}
-                key={card.key}
-                money={card.money}
-                title={card.title}
-                value={card.value}
-              />
-            ))}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+          <div className="rounded-lg bg-sky-50 p-3 ring-1 ring-sky-100">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-sky-700">
+              Cortes
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">{weeklyCutsCount}</p>
+          </div>
+          <div className="rounded-lg bg-sky-50 p-3 ring-1 ring-sky-100">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-sky-700">
+              Comision semanal
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">
+              {formatCurrency(weeklyCommission)}
+            </p>
+          </div>
+          <div className="col-span-2 rounded-lg bg-slate-100 p-3 ring-1 ring-slate-200 md:col-span-1">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              Comision %
+            </p>
+            <p className="mt-1 text-2xl font-semibold text-slate-950">
+              {Number(profile?.commission_percentage || 0)}%
+            </p>
           </div>
         </div>
-      </CollapsibleSection>
+      </section>
 
       {!loading && todayDay && (
         <section
-          className="card animate-card-in scroll-mt-4 space-y-5 p-4 sm:p-6"
+          className="animate-card-in scroll-mt-4 space-y-2"
           id="today-haircuts-section"
         >
-          <div className="border-b border-stone-200 pb-4">
-            <p className="eyebrow">Hoy</p>
-            <h2 className="section-title mt-2">Cortes del dia</h2>
-            <p className="muted-text mt-1">
-              Registra y revisa la actividad de hoy.
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.14em] text-sky-700">
+              Hoy
             </p>
+            <h2 className="mt-1 text-xl font-semibold text-slate-950">
+              {todayDay.label} {todayDay.shortLabel}
+            </h2>
           </div>
 
           <DayCard
             badgeLabel="Hoy"
+            createRequestKey={todayCreateRequestKey}
             day={todayDay}
             featured
             haircuts={haircutsByDay[todayDay.date] || []}
             isToday
-            createRequestKey={todayCreateRequestKey}
             onAddHaircut={handleAddHaircut}
             onDeleteHaircut={handleDeleteHaircut}
             onUpdateHaircut={handleUpdateHaircut}
@@ -305,26 +286,26 @@ export default function DashboardPage() {
       )}
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert className="rounded-lg border-red-200 bg-red-50 text-red-800" variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
       {loading ? (
-        <div className="card p-6 text-center text-sm text-stone-500">Cargando cortes...</div>
+        <section className="space-y-2">
+          <Skeleton className="h-24 rounded-lg bg-slate-200" />
+          <Skeleton className="h-24 rounded-lg bg-slate-200" />
+          <Skeleton className="h-24 rounded-lg bg-slate-200" />
+        </section>
       ) : (
-        <section className="card animate-card-in space-y-5 p-4 sm:p-6">
-          <div className="border-b border-stone-200 pb-4">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-stone-500">
-              Semana completa
-            </p>
-            <h2 className="section-title mt-2">Resto de la semana</h2>
-            <p className="muted-text mt-1">
-              Consulta y actualiza los cortes de los demas dias.
-            </p>
+        <section className="animate-card-in space-y-2">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-950">Otros dias</h2>
           </div>
 
-          <div className="grid gap-4">
+          <Separator className="bg-slate-200" />
+
+          <div className="grid gap-2">
             {remainingDays.map((day) => {
               return (
                 <DayCard

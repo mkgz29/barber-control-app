@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import AuthStatusScreen from "../components/AuthStatusScreen";
 import LoadingScreen from "../components/LoadingScreen";
 import { useAuth } from "../context/AuthContext";
@@ -26,25 +30,25 @@ export default function UpdatePasswordPage() {
     }
 
     if (password.length < 6) {
-      return "La contraseña debe tener al menos 6 caracteres.";
+      return "La contrasena debe tener al menos 6 caracteres.";
     }
 
     if (password !== confirmPassword) {
-      return "Las contraseñas no coinciden.";
+      return "Las contrasenas no coinciden.";
     }
 
     return "";
   }, [password, confirmPassword]);
 
   if (authLoading) {
-    return <LoadingScreen message="Preparando el cambio de contraseña..." />;
+    return <LoadingScreen message="Preparando el cambio de contrasena..." />;
   }
 
   if (!session) {
     return (
       <AuthStatusScreen
-        title="Sesión no disponible"
-        message="Abrí nuevamente el enlace de recuperación desde tu email."
+        title="Sesion no disponible"
+        message="Abri nuevamente el enlace de recuperacion desde tu email."
         actionLabel="Volver al login"
         onAction={() => {
           window.location.assign("/auth");
@@ -76,43 +80,39 @@ export default function UpdatePasswordPage() {
 
     try {
       await updatePassword(password);
-      setInfo("Tu contraseña se actualizó correctamente. Volvé a ingresar con la nueva.");
+      setInfo("Tu contrasena se actualizo correctamente. Volve a ingresar con la nueva.");
       await signOut();
     } catch (updateError) {
-      setError(updateError.message || "No pudimos actualizar la contraseña.");
+      setError(updateError.message || "No pudimos actualizar la contrasena.");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-stone-950 px-4 py-8 sm:px-6 lg:flex lg:items-center lg:justify-center">
+    <div className="min-h-screen bg-slate-50 px-4 py-6 sm:px-6 lg:flex lg:items-center lg:justify-center">
       <form
-        className="mx-auto w-full max-w-md rounded-[2rem] border border-white/10 bg-white p-6 shadow-[0_24px_60px_rgba(12,10,9,0.3)]"
+        className="mx-auto w-full max-w-md rounded-lg border border-slate-200 bg-white p-4 sm:p-5"
         onSubmit={handleSubmit}
       >
-        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand-700">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-sky-700">
           Agenda Barber
         </p>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight text-stone-950">
-          Elegí una nueva contraseña
+        <h1 className="mt-3 text-2xl font-semibold tracking-normal text-slate-950">
+          Nueva contrasena
         </h1>
-        <p className="mt-3 text-sm leading-6 text-stone-600">
-          Este paso completa la recuperación enviada por email.
+        <p className="mt-1 text-sm leading-6 text-slate-500">
+          Este paso completa la recuperacion enviada por email.
         </p>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-5 space-y-4">
           <div>
-            <label
-              className="mb-2 block text-sm font-semibold tracking-[0.01em] text-stone-800"
-              htmlFor="new-password"
-            >
-              Nueva contraseña
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="new-password">
+              Nueva contrasena
             </label>
-            <input
-              className="input hover:border-stone-300"
+            <Input
               id="new-password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Minimo 6 caracteres"
               type="password"
               value={password}
               onChange={(event) => setPassword(event.target.value)}
@@ -120,16 +120,12 @@ export default function UpdatePasswordPage() {
           </div>
 
           <div>
-            <label
-              className="mb-2 block text-sm font-semibold tracking-[0.01em] text-stone-800"
-              htmlFor="confirm-password"
-            >
-              Repetí la contraseña
+            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="confirm-password">
+              Repeti la contrasena
             </label>
-            <input
-              className="input hover:border-stone-300"
+            <Input
               id="confirm-password"
-              placeholder="Repetí tu nueva contraseña"
+              placeholder="Repeti tu nueva contrasena"
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -138,19 +134,19 @@ export default function UpdatePasswordPage() {
         </div>
 
         {error && (
-          <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </p>
+          <Alert className="mt-4 border-red-200 bg-red-50 text-red-800" variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         {info && (
-          <p className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-            {info}
-          </p>
+          <Alert className="mt-4 border-emerald-200 bg-emerald-50 text-emerald-800">
+            <AlertDescription>{info}</AlertDescription>
+          </Alert>
         )}
 
-        <button className="btn-primary mt-6 w-full" disabled={loading} type="submit">
-          {loading ? "Actualizando..." : "Actualizar contraseña"}
-        </button>
+        <Button className="mt-5 w-full bg-sky-600 text-white shadow-none hover:bg-sky-700" disabled={loading} type="submit">
+          {loading ? "Actualizando..." : "Actualizar contrasena"}
+        </Button>
       </form>
     </div>
   );

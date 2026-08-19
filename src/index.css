@@ -3,10 +3,32 @@
 @tailwind utilities;
 
 :root {
-  color: #1c1917;
-  background:
-    radial-gradient(circle at 15% 0%, rgba(199, 109, 69, 0.1), transparent 30rem),
-    linear-gradient(180deg, #fbfaf8 0%, #f5f3f0 48%, #efede9 100%);
+  --background: 210 40% 98%;
+  --foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --primary: 199 89% 48%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 204 94% 94%;
+  --accent-foreground: 201 96% 32%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --success: 160 84% 39%;
+  --success-foreground: 0 0% 100%;
+  --warning: 38 92% 50%;
+  --warning-foreground: 222 47% 11%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 199 89% 48%;
+  --radius: 0.5rem;
+  color: #0f172a;
+  background: #f8fafc;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,6 +43,7 @@ body,
 
 body {
   margin: 0;
+  background: #f8fafc;
   overflow-x: hidden;
 }
 
@@ -33,47 +56,47 @@ textarea {
 
 @layer components {
   .card {
-    @apply rounded-[1.35rem] border border-stone-200/70 bg-white/90 shadow-warm backdrop-blur;
+    @apply rounded-lg border border-slate-200 bg-white shadow-none;
   }
 
   .surface {
-    @apply rounded-[1.35rem] border border-stone-200/70 bg-white/75 shadow-soft backdrop-blur;
+    @apply rounded-lg border border-slate-200 bg-white shadow-none;
   }
 
   .section-title {
-    @apply text-xl font-semibold tracking-normal text-stone-950 sm:text-2xl;
+    @apply text-xl font-semibold tracking-normal text-slate-950 sm:text-2xl;
   }
 
   .eyebrow {
-    @apply text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-brand-700;
+    @apply text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-sky-700;
   }
 
   .muted-text {
-    @apply text-sm leading-6 text-stone-500;
+    @apply text-sm leading-6 text-slate-500;
   }
 
   .badge {
-    @apply inline-flex items-center rounded-full border border-stone-200 bg-stone-50 px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-stone-600;
+    @apply inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-600;
   }
 
   .badge-brand {
-    @apply border-brand-200 bg-brand-50 text-brand-800;
+    @apply border-sky-200 bg-sky-50 text-sky-700;
   }
 
   .input {
-    @apply w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-900 outline-none transition duration-200 placeholder:text-stone-400 hover:border-stone-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-100 sm:text-sm;
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-base text-slate-900 outline-none transition duration-200 placeholder:text-slate-400 hover:border-slate-300 focus:border-sky-500 focus:ring-4 focus:ring-sky-100 sm:text-sm;
   }
 
   .btn-primary {
-    @apply inline-flex min-h-12 items-center justify-center rounded-2xl bg-stone-950 px-4 py-3 text-sm font-semibold text-white shadow-[0_14px_26px_-18px_rgba(28,25,23,0.75)] transition duration-200 hover:-translate-y-0.5 hover:bg-stone-800 focus:outline-none focus:ring-4 focus:ring-stone-300/50 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+    @apply inline-flex min-h-10 items-center justify-center rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-none transition duration-200 hover:bg-sky-700 focus:outline-none focus:ring-4 focus:ring-sky-100 active:bg-sky-800 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .btn-secondary {
-    @apply inline-flex min-h-11 items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 py-2.5 text-sm font-semibold text-stone-700 shadow-[0_8px_20px_-18px_rgba(28,25,23,0.8)] transition duration-200 hover:-translate-y-0.5 hover:border-stone-300 hover:bg-stone-50 focus:outline-none focus:ring-4 focus:ring-brand-100 active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0;
+    @apply inline-flex min-h-10 items-center justify-center rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-none transition duration-200 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-950 focus:outline-none focus:ring-4 focus:ring-sky-100 disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .tap-card {
-    @apply transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_16px_34px_-26px_rgba(28,25,23,0.42)] active:translate-y-0;
+    @apply transition duration-200 hover:border-slate-300 active:bg-slate-50;
   }
 }
 

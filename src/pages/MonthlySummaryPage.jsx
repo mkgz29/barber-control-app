@@ -1,22 +1,81 @@
 import { useEffect, useMemo, useState } from "react";
-import StatCard from "../components/StatCard";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "../context/AuthContext";
 import {
   formatCurrency,
-  formatDateLabel,
-  getArgentinaTodayValue,
   getCurrentMonthValue,
   getMonthRange,
-  getWeekLabelFromDate,
   groupHaircutsByBusinessWeeks,
 } from "../lib/date";
 import supabase from "../lib/supabaseClient";
 
+function addMonths(monthValue, amount) {
+  const [year, month] = monthValue.split("-").map(Number);
+  const date = new Date(year, month - 1 + amount, 1, 12, 0, 0, 0);
+  const nextYear = date.getFullYear();
+  const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
+
+  return `${nextYear}-${nextMonth}`;
+}
+
+function formatMonthLabel(monthValue) {
+  const [year, month] = monthValue.split("-").map(Number);
+
+  return new Intl.DateTimeFormat("es-AR", {
+    month: "long",
+    year: "numeric",
+    timeZone: "America/Argentina/Tucuman",
+  }).format(new Date(year, month - 1, 1, 12, 0, 0, 0));
+}
+
+function formatAverage(value) {
+  return new Intl.NumberFormat("es-AR", {
+    maximumFractionDigits: 1,
+    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
+  }).format(value);
+}
+
+function MonthlyTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) {
+    return null;
+  }
+
+  const item = payload[0]?.payload;
+  const value = payload[0]?.value;
+  const metric = payload[0]?.dataKey;
+
+  return (
+    <div className="max-w-[14rem] rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm shadow-lg shadow-slate-900/10">
+      <p className="font-semibold text-slate-950">{label}</p>
+      <p className="mt-1 text-xs text-slate-500">{item?.dateRange}</p>
+      <p className="mt-2 font-semibold text-sky-700">
+        {metric === "commission"
+          ? formatCurrency(value)
+          : `${value} ${value === 1 ? "corte" : "cortes"}`}
+      </p>
+    </div>
+  );
+}
+
 export default function MonthlySummaryPage() {
   const { user } = useAuth();
   const [month, setMonth] = useState(getCurrentMonthValue());
-  const [groupMode, setGroupMode] = useState("day");
-  const [selectedWeekKey, setSelectedWeekKey] = useState("");
+  const [chartMetric, setChartMetric] = useState("cuts");
   const [haircuts, setHaircuts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -67,234 +126,200 @@ export default function MonthlySummaryPage() {
     );
   }, [haircuts]);
 
-  const groupedItems = useMemo(() => {
-    const groupedMap = new Map();
-
-    haircuts.forEach((haircut) => {
-      const key =
-        groupMode === "week" ? getWeekLabelFromDate(haircut.haircut_date) : haircut.haircut_date;
-      const label = groupMode === "week" ? key : formatDateLabel(haircut.haircut_date);
-
-      if (!groupedMap.has(key)) {
-        groupedMap.set(key, {
-          key,
-          label,
-          commission: 0,
-          count: 0,
-        });
-      }
-
-      const group = groupedMap.get(key);
-      group.commission += Number(haircut.commission_amount);
-      group.count += 1;
-    });
-
-    return Array.from(groupedMap.values());
-  }, [groupMode, haircuts]);
-
-  const todayDate = getArgentinaTodayValue(new Date());
   const weeklyBlocks = useMemo(
     () => groupHaircutsByBusinessWeeks(haircuts, month),
     [haircuts, month]
   );
-  const maxWeeklyCuts = Math.max(...weeklyBlocks.map((block) => block.count), 0);
-  const currentWeek = weeklyBlocks.find((block) => todayDate >= block.start && todayDate <= block.end);
-  const lastAvailableWeek = [...weeklyBlocks].reverse().find((block) => block.start <= todayDate);
-  const selectedWeek =
-    weeklyBlocks.find((block) => block.key === selectedWeekKey && block.start <= todayDate) ??
-    currentWeek ??
-    lastAvailableWeek ??
-    weeklyBlocks[0] ??
-    null;
-  const monthlySummaryCards = [
-    {
-      key: "commission",
-      money: true,
-      title: "Tu comision mensual",
-      value: totals.commission,
-    },
-    {
-      key: "count",
-      title: "Tus cortes del mes",
-      value: totals.count,
-    },
-  ];
 
-  useEffect(() => {
-    if (!selectedWeek || selectedWeekKey === selectedWeek.key) {
-      return;
+  const weeklySeries = useMemo(() => {
+    return weeklyBlocks.map((block) => ({
+      week: block.label,
+      cuts: block.count,
+      commission: block.commission,
+      dateRange: block.displayRange,
+    }));
+  }, [weeklyBlocks]);
+
+  const averageWeeklyCuts =
+    weeklyBlocks.length > 0 ? totals.count / weeklyBlocks.length : 0;
+  const bestWeek = weeklyBlocks.reduce((best, block) => {
+    if (!best || block.count > best.count) {
+      return block;
     }
 
-    setSelectedWeekKey(selectedWeek.key);
-  }, [selectedWeek?.key, selectedWeekKey]);
+    return best;
+  }, null);
+  const chartDataKey = chartMetric === "commission" ? "commission" : "cuts";
+  const chartValueFormatter =
+    chartMetric === "commission" ? (value) => formatCurrency(value) : (value) => value;
+  const monthLabel = formatMonthLabel(month);
 
   return (
     <div className="space-y-5">
-      <section className="card animate-card-in p-4 sm:p-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+      <section className="animate-card-in space-y-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="eyebrow">Tu resumen mensual</p>
-            <h1 className="mt-2 text-2xl font-semibold text-stone-950 sm:text-3xl">
-              Tu mes
+            <h1 className="text-2xl font-semibold tracking-normal text-slate-950">
+              Mes
             </h1>
-            <p className="muted-text mt-2">
-              Filtra por mes y revisa tus numeros agrupados por dia o semana.
+            <p className="mt-1 text-sm text-slate-500">
+              Evolucion semanal de cortes y comision.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 md:min-w-[25rem]">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">Mes</label>
-              <input
-                className="input"
-                type="month"
-                value={month}
-                onChange={(event) => setMonth(event.target.value)}
-              />
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+            <Button
+              aria-label="Mes anterior"
+              className="h-9 w-9 border-slate-200 bg-white text-slate-600 shadow-none hover:bg-sky-50 hover:text-sky-700"
+              onClick={() => setMonth((current) => addMonths(current, -1))}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <ChevronLeft className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <div className="min-w-0">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-400">
+                Mes seleccionado
+              </p>
+              <p className="text-sm font-semibold capitalize text-slate-950">{monthLabel}</p>
             </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-stone-700">Agrupar por</label>
-              <select
-                className="input"
-                value={groupMode}
-                onChange={(event) => setGroupMode(event.target.value)}
-              >
-                <option value="day">Dia</option>
-                <option value="week">Semana</option>
-              </select>
-            </div>
+            <Button
+              aria-label="Mes siguiente"
+              className="h-9 w-9 border-slate-200 bg-white text-slate-600 shadow-none hover:bg-sky-50 hover:text-sky-700"
+              onClick={() => setMonth((current) => addMonths(current, 1))}
+              size="icon"
+              type="button"
+              variant="outline"
+            >
+              <ChevronRight className="h-4 w-4" aria-hidden="true" />
+            </Button>
+            <label className="sr-only" htmlFor="monthly-summary-month">
+              Mes
+            </label>
+            <Input
+              className="h-9 w-[9.5rem] border-slate-200 bg-white text-sm shadow-none focus-visible:ring-sky-100"
+              id="monthly-summary-month"
+              type="month"
+              value={month}
+              onChange={(event) => {
+                if (event.target.value) {
+                  setMonth(event.target.value);
+                }
+              }}
+            />
           </div>
         </div>
 
-        <div
-          className={`mt-6 grid gap-4 ${
-            monthlySummaryCards.length >= 3
-              ? "sm:grid-cols-3"
-              : monthlySummaryCards.length === 2
-                ? "sm:grid-cols-2"
-                : "sm:grid-cols-1"
-          }`}
-        >
-          {monthlySummaryCards.map((card) => (
-            <StatCard key={card.key} money={card.money} title={card.title} value={card.value} />
-          ))}
+        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              Cortes
+            </p>
+            <p className="mt-1.5 text-2xl font-semibold text-slate-950">{totals.count}</p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              Comision
+            </p>
+            <p className="mt-1.5 text-2xl font-semibold text-slate-950">
+              {formatCurrency(totals.commission)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              Promedio semanal
+            </p>
+            <p className="mt-1.5 text-2xl font-semibold text-slate-950">
+              {formatAverage(averageWeeklyCuts)}
+            </p>
+          </div>
+          <div className="rounded-lg border border-slate-200 bg-white p-3">
+            <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
+              Mejor semana
+            </p>
+            <p className="mt-1.5 text-2xl font-semibold text-slate-950">
+              {bestWeek ? `${bestWeek.count} cortes` : "0 cortes"}
+            </p>
+          </div>
         </div>
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert className="rounded-lg border-red-200 bg-red-50 text-red-800" variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <section className="card animate-card-in p-4 sm:p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <section className="animate-card-in space-y-4 rounded-lg border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p className="eyebrow">Grafico</p>
-            <h2 className="section-title mt-2">Actividad por semanas</h2>
+            <h2 className="text-xl font-semibold text-slate-950">Evolucion del mes</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Semana comercial de sabado a viernes.
+            </p>
           </div>
-          <p className="muted-text">Semana comercial de sabado a viernes.</p>
-        </div>
 
-        <div className="mt-4 rounded-2xl border border-stone-200 bg-stone-50/70 p-3 sm:p-4">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-            {weeklyBlocks.map((block) => {
-              const isFuture = block.start > todayDate;
-              const isSelected = selectedWeek?.key === block.key;
-              const height = maxWeeklyCuts > 0 ? (block.count / maxWeeklyCuts) * 100 : 0;
-
-              return (
-                <button
-                  className={`tap-card rounded-2xl border bg-white p-3 text-left transition ${
-                    isSelected
-                      ? "border-brand-300 ring-4 ring-brand-100"
-                      : "border-stone-200 hover:border-stone-300"
-                  } ${isFuture ? "opacity-50" : ""}`}
-                  disabled={isFuture}
-                  key={block.key}
-                  onClick={() => setSelectedWeekKey(block.key)}
-                  type="button"
-                >
-                  <div className="flex items-center gap-3 sm:block">
-                    <div className="flex h-16 w-2 shrink-0 items-end overflow-hidden rounded-full bg-stone-100 sm:mx-auto sm:h-20 sm:w-6 sm:rounded-full">
-                      <div
-                        className={`w-full rounded-full ${
-                          isFuture
-                            ? "bg-stone-300"
-                            : "bg-gradient-to-t from-brand-700 via-brand-500 to-brand-300"
-                        }`}
-                        style={{ height: `${Math.max(height, block.count > 0 ? 10 : 0)}%` }}
-                      />
-                    </div>
-                    <div className="min-w-0 sm:mt-2 sm:text-center">
-                      <p className="text-sm font-semibold text-stone-950">{block.label}</p>
-                      <p className="mt-1 text-xs leading-4 text-stone-500">{block.displayRange}</p>
-                      <p className="mt-1 text-sm font-semibold text-brand-800">
-                        {block.count} {block.count === 1 ? "corte" : "cortes"}
-                      </p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {selectedWeek && (
-          <div className="mt-4 grid gap-3 rounded-2xl border border-stone-200 bg-white/90 p-4 sm:grid-cols-3">
-            <div className="sm:col-span-1">
-              <p className="eyebrow">{selectedWeek.label}</p>
-              <p className="mt-1 text-sm font-semibold text-stone-950">
-                {selectedWeek.displayRange}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+          <Tabs onValueChange={setChartMetric} value={chartMetric}>
+            <TabsList className="grid h-9 w-full grid-cols-2 rounded-lg bg-slate-100 p-1 sm:w-52">
+              <TabsTrigger
+                className="h-7 rounded-md text-xs data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-none"
+                value="cuts"
+              >
                 Cortes
-              </p>
-              <p className="mt-1 text-xl font-semibold text-stone-950">{selectedWeek.count}</p>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                Tu comision
-              </p>
-              <p className="mt-1 text-xl font-semibold text-brand-800">
-                {formatCurrency(selectedWeek.commission)}
-              </p>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="card animate-card-in p-4 sm:p-6">
-        <h2 className="section-title">Detalle agrupado</h2>
+              </TabsTrigger>
+              <TabsTrigger
+                className="h-7 rounded-md text-xs data-[state=active]:bg-white data-[state=active]:text-sky-700 data-[state=active]:shadow-none"
+                value="commission"
+              >
+                Comision
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
 
         {loading ? (
-          <p className="mt-4 text-sm text-stone-500">Cargando resumen...</p>
-        ) : groupedItems.length === 0 ? (
-          <div className="mt-4 rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">
-            No hay cortes cargados para este mes.
+          <div className="h-[260px] space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <Skeleton className="h-5 w-36 bg-slate-200" />
+            <Skeleton className="h-[205px] rounded-lg bg-slate-200" />
+          </div>
+        ) : weeklySeries.length === 0 ? (
+          <div className="flex h-[240px] items-center rounded-lg border border-dashed border-slate-300 px-4 text-sm text-slate-500">
+            No hay datos para graficar este mes.
           </div>
         ) : (
-          <div className="mt-4 space-y-3">
-            {groupedItems.map((item) => (
-              <div
-                className="tap-card flex flex-col gap-3 rounded-2xl border border-stone-200 bg-white/90 p-4 sm:flex-row sm:items-center sm:justify-between"
-                key={item.key}
+          <div className="h-[260px] w-full min-w-0 sm:h-[300px]">
+            <ResponsiveContainer height="100%" width="100%">
+              <LineChart
+                data={weeklySeries}
+                margin={{ top: 12, right: 12, bottom: 0, left: 0 }}
               >
-                <div>
-                  <p className="font-semibold text-stone-950">{item.label}</p>
-                  <p className="text-sm text-stone-500">{item.count} cortes</p>
-                </div>
-
-                <div className="grid gap-2 text-sm sm:text-right">
-                  <p className="font-semibold text-brand-800">
-                    Comision: {formatCurrency(item.commission)}
-                  </p>
-                </div>
-              </div>
-            ))}
+                <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  axisLine={false}
+                  dataKey="week"
+                  tick={{ fill: "#64748b", fontSize: 12 }}
+                  tickLine={false}
+                />
+                <YAxis
+                  axisLine={false}
+                  tick={{ fill: "#64748b", fontSize: 12 }}
+                  tickFormatter={chartValueFormatter}
+                  tickLine={false}
+                  width={chartMetric === "commission" ? 78 : 28}
+                />
+                <Tooltip content={<MonthlyTooltip />} cursor={{ stroke: "#bae6fd" }} />
+                <Line
+                  activeDot={{ r: 5, stroke: "#0284c7", strokeWidth: 2 }}
+                  dataKey={chartDataKey}
+                  dot={{ r: 3, strokeWidth: 2 }}
+                  name={chartMetric === "commission" ? "Comision" : "Cortes"}
+                  stroke="#0284c7"
+                  strokeWidth={2}
+                  type="monotone"
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         )}
       </section>

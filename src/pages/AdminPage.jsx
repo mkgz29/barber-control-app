@@ -1,4 +1,10 @@
 import { useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "../context/AuthContext";
 import supabase from "../lib/supabaseClient";
 
@@ -28,36 +34,38 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
   const canSave = user.hasChanges && hasValidCommission && !saving;
 
   return (
-    <article className="rounded-[1.75rem] border border-stone-200 bg-white/80 p-5 shadow-sm transition">
-      <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-3">
+    <article className="rounded-lg border border-slate-200 bg-white px-3 py-3 sm:px-4">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(24rem,0.9fr)] lg:items-start">
+        <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-lg font-bold text-stone-950">{user.full_name || "Sin nombre"}</h2>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${
+            <h2 className="truncate text-base font-semibold text-slate-950">{user.full_name || "Sin nombre"}</h2>
+            <Badge
+              className={
                 user.role === "admin"
-                  ? "bg-brand-100 text-brand-800"
-                  : "bg-stone-200 text-stone-700"
-              }`}
+                  ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-50"
+                  : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-50"
+              }
+              variant="outline"
             >
               {user.role === "admin" ? "Admin" : "Barber"}
-            </span>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            </Badge>
+            <Badge
+              className={
                 user.is_active
-                  ? "bg-brand-50 text-brand-800"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50"
                   : "bg-red-100 text-red-700"
-              }`}
+              }
+              variant="outline"
             >
               {user.is_active ? "Activo" : "Inactivo"}
-            </span>
+            </Badge>
           </div>
 
-          <div className="space-y-1 text-sm text-stone-600">
-            <p>{user.email}</p>
+          <div className="space-y-1 text-sm text-slate-600">
+            <p className="break-all">{user.email}</p>
             <p title={user.barbershop_name || ""}>
               Barberia:{" "}
-              <span className={user.barbershop_name?.trim() ? "text-stone-700" : "text-stone-400 italic"}>
+              <span className={user.barbershop_name?.trim() ? "text-slate-700" : "text-slate-400 italic"}>
                 {user.barbershop_name?.trim() || "Sin cargar"}
               </span>
             </p>
@@ -70,12 +78,12 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
           </div>
         </div>
 
-        <div className="grid gap-4 lg:min-w-[380px] lg:max-w-[420px] lg:flex-1">
-          <label className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-            <span className="text-sm font-semibold text-stone-800">Usuario activo</span>
+        <div className="grid gap-3 sm:grid-cols-[1fr_7rem] lg:grid-cols-[1fr_8rem]">
+          <label className="flex min-h-10 items-center justify-between rounded-md border border-slate-200 bg-slate-50 px-3 py-2 sm:col-span-2">
+            <span className="text-sm font-medium text-slate-800">Usuario activo</span>
             <input
               checked={user.is_active}
-              className="h-5 w-5 accent-stone-900"
+              className="h-5 w-5 accent-sky-600"
               onChange={(event) => onFieldChange(user.id, "is_active", event.target.checked)}
               type="checkbox"
             />
@@ -83,13 +91,12 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
 
           <div>
             <label
-              className="mb-2 block text-sm font-semibold text-stone-800"
+              className="mb-1 block text-sm font-medium text-slate-700"
               htmlFor={`barbershop-${user.id}`}
             >
               Barberia
             </label>
-            <input
-              className="input"
+            <Input
               id={`barbershop-${user.id}`}
               placeholder="Ej: Barberia Chinos"
               type="text"
@@ -100,14 +107,14 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
 
           <div>
             <label
-              className="mb-2 block text-sm font-semibold text-stone-800"
+              className="mb-1 block text-sm font-medium text-slate-700"
               htmlFor={`commission-${user.id}`}
             >
-              Porcentaje de comision
+              Comision
             </label>
             <div className="relative">
-              <input
-                className={`input pr-10 ${
+              <Input
+                className={`pr-8 ${
                   user.validationError ? "!border-red-400 !bg-red-50/70 !ring-2 !ring-red-100" : ""
                 }`}
                 id={`commission-${user.id}`}
@@ -120,7 +127,7 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
                   onFieldChange(user.id, "commission_percentage", event.target.value)
                 }
               />
-              <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm font-medium text-stone-500">
+              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-sm font-medium text-slate-500">
                 %
               </span>
             </div>
@@ -131,10 +138,12 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3 border-t border-stone-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+      <Separator className="mt-4 bg-slate-200" />
+
+      <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           {!user.hasChanges && !user.saveMessage && (
-            <p className="text-sm text-stone-500">Sin cambios pendientes.</p>
+            <p className="text-sm text-slate-500">Sin cambios pendientes.</p>
           )}
           {user.hasChanges && !user.validationError && (
             <p className="text-sm text-amber-700">Tenes cambios sin guardar.</p>
@@ -150,9 +159,9 @@ function AdminUserCard({ user, saving, onFieldChange, onSave }) {
           )}
         </div>
 
-        <button className="btn-primary sm:min-w-[180px]" disabled={!canSave} onClick={() => onSave(user.id)}>
+        <Button className="w-full bg-sky-600 text-white shadow-none hover:bg-sky-700 sm:w-auto sm:min-w-40" disabled={!canSave} onClick={() => onSave(user.id)}>
           {saving ? "Guardando..." : "Guardar cambios"}
-        </button>
+        </Button>
       </div>
     </article>
   );
@@ -334,61 +343,58 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-5">
-      <section className="card p-6">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <section className="animate-card-in space-y-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-700">
-              Agenda Barber
-            </p>
-            <h1 className="mt-2 text-3xl font-bold text-stone-900">Administracion de usuarios</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">
+            <h1 className="text-2xl font-semibold tracking-normal text-slate-950">Admin</h1>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-500">
               Gestiona el acceso del equipo, el estado de cada cuenta, la barberia y la comision
               asignada a cada perfil.
             </p>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl bg-stone-100 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-slate-500">
                 Usuarios
               </p>
-              <p className="mt-1 text-2xl font-bold text-stone-900">{totalUsers}</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-950">{totalUsers}</p>
             </div>
-            <div className="rounded-2xl border border-brand-100 bg-brand-50/80 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-emerald-700">
                 Activos
               </p>
-              <p className="mt-1 text-2xl font-bold text-brand-800">{activeUsers}</p>
+              <p className="mt-1 text-2xl font-semibold text-emerald-700">{activeUsers}</p>
             </div>
-            <div className="rounded-2xl bg-brand-50 px-4 py-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">
+            <div className="rounded-lg border border-sky-200 bg-sky-50 px-3 py-2.5">
+              <p className="text-xs font-medium uppercase tracking-[0.12em] text-sky-700">
                 Admins
               </p>
-              <p className="mt-1 text-2xl font-bold text-brand-800">{adminUsers}</p>
+              <p className="mt-1 text-2xl font-semibold text-sky-700">{adminUsers}</p>
             </div>
           </div>
         </div>
       </section>
 
       {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          {error}
-        </div>
+        <Alert className="rounded-lg border-red-200 bg-red-50 text-red-800" variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <section className="card p-6">
+      <section className="animate-card-in">
         {loading ? (
           <div className="space-y-3">
-            <div className="h-24 animate-pulse rounded-3xl bg-stone-100" />
-            <div className="h-24 animate-pulse rounded-3xl bg-stone-100" />
-            <div className="h-24 animate-pulse rounded-3xl bg-stone-100" />
+            <Skeleton className="h-36 rounded-lg bg-slate-200" />
+            <Skeleton className="h-36 rounded-lg bg-slate-200" />
+            <Skeleton className="h-36 rounded-lg bg-slate-200" />
           </div>
         ) : users.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-stone-300 p-4 text-sm text-stone-500">
+          <div className="py-6 text-sm text-slate-500">
             No hay usuarios registrados.
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {users.map((user) => (
               <AdminUserCard
                 key={user.id}
