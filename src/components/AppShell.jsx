@@ -1,16 +1,7 @@
-import { CalendarDays, Clock, LogOut, Scissors, Shield, Trophy, User } from "lucide-react";
+import { CalendarDays, Clock, ListChecks, LogOut, Scissors, Shield, Trophy, User } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
+import BarberAvatar from "./BarberAvatar";
 import { useAuth } from "../context/AuthContext";
-
-function getUserInitial(profile) {
-  const fullName = String(profile?.full_name || "").trim();
-
-  if (!fullName) {
-    return "A";
-  }
-
-  return fullName.charAt(0).toUpperCase();
-}
 
 function getRoleLabel(role) {
   if (role === "admin") {
@@ -47,7 +38,7 @@ function NavItem({ to, label, icon: Icon }) {
 export default function AppShell() {
   const { profile, signOut } = useAuth();
   const roleLabel = getRoleLabel(profile?.role);
-  const userInitial = getUserInitial(profile);
+  const userName = profile?.full_name || "Mi cuenta";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-950">
@@ -83,22 +74,21 @@ export default function AppShell() {
             <NavItem to="/turnos" label="Turnos" icon={Clock} />
             <NavItem to="/resumen-mensual" label="Mes" icon={CalendarDays} />
             <NavItem to="/ranking-mensual" label="Ranking" icon={Trophy} />
+            {profile?.role === "admin" && <NavItem to="/servicios" label="Servicios" icon={ListChecks} />}
             <NavItem to="/perfil" label="Perfil" icon={User} />
             {profile?.role === "admin" && <NavItem to="/admin" label="Admin" icon={Shield} />}
           </nav>
 
           <div className="hidden min-w-0 items-center justify-end gap-3 lg:flex">
             <div className="flex min-w-0 items-center gap-2">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-100 text-sm font-semibold text-slate-700">
-                {userInitial}
-              </div>
+              <BarberAvatar name={userName} size="sm" src={profile?.avatar_url} />
               <div className="min-w-0">
                 <div className="flex min-w-0 items-center gap-2">
                   <p
                     className="max-w-[11rem] truncate text-sm font-medium text-slate-900"
-                    title={profile?.full_name || "Mi cuenta"}
+                    title={userName}
                   >
-                    {profile?.full_name || "Mi cuenta"}
+                    {userName}
                   </p>
                   {roleLabel && (
                     <span className="rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[0.68rem] font-medium uppercase tracking-[0.08em] text-slate-500">

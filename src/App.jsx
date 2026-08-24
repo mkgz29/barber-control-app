@@ -9,6 +9,7 @@ import DashboardPage from "./pages/DashboardPage";
 import MonthlySummaryPage from "./pages/MonthlySummaryPage";
 import ProfileSetupPage from "./pages/ProfileSetupPage";
 import RankingMonthlyPage from "./pages/RankingMonthlyPage";
+import ServicesPage from "./pages/ServicesPage";
 import TurnosPage from "./pages/TurnosPage";
 import UpdatePasswordPage from "./pages/UpdatePasswordPage";
 
@@ -30,6 +31,8 @@ export default function App() {
 
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="/servicios" element={<ServicesPage />} />
+            <Route path="/services" element={<ServicesPage />} />
           </Route>
         </Route>
       </Route>

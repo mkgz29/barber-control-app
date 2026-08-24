@@ -8,9 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import BarberAvatar from "../components/BarberAvatar";
 import DayTimeline from "../components/turnos/DayTimeline";
 import { formatDateLabel, getArgentinaTodayValue, toDateInputValue } from "../lib/date";
 import { getChinosBusySlots, getChinosPublicStaff } from "../lib/chinosTurnos";
+import supabase from "../lib/supabaseClient";
 
 const CHINOS_BARBERS = [
   {
@@ -92,12 +94,32 @@ function sortBusySlotsByStartTime(busySlots) {
   );
 }
 
+function normalizeName(value) {
+  return String(value || "")
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function getBarberProfile(barber, profiles) {
+  const label = normalizeName(barber?.label);
+
+  return profiles.find((profile) => {
+    const fullName = normalizeName(profile?.full_name);
+    const firstName = fullName.split(/\s+/)[0];
+
+    return firstName === label || fullName === label;
+  });
+}
+
 export default function TurnosPage() {
   const todayDate = useMemo(() => getArgentinaTodayValue(new Date()), []);
   const [selectedDate, setSelectedDate] = useState(todayDate);
   // TODO: Select by profile.external_staff_id when the dashboard model stores that link.
   const [selectedStaffId, setSelectedStaffId] = useState(CHINOS_BARBERS[0].staffId);
   const [staff, setStaff] = useState([]);
+  const [barberProfiles, setBarberProfiles] = useState([]);
   const [busySlots, setBusySlots] = useState([]);
   const [staffLoading, setStaffLoading] = useState(true);
   const [busyLoading, setBusyLoading] = useState(true);
@@ -132,6 +154,24 @@ export default function TurnosPage() {
     }
 
     loadStaff();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadBarberProfiles() {
+      const { data, error } = await supabase.rpc("get_barber_avatar_profiles");
+
+      if (!cancelled && !error) {
+        setBarberProfiles(data || []);
+      }
+    }
+
+    loadBarberProfiles();
 
     return () => {
       cancelled = true;
@@ -178,6 +218,8 @@ export default function TurnosPage() {
   }, [selectedDate]);
 
   const selectedBarber = CHINOS_BARBERS.find((barber) => barber.staffId === selectedStaffId);
+  const selectedBarberProfile = getBarberProfile(selectedBarber, barberProfiles);
+  const selectedBarberName = selectedBarberProfile?.full_name || selectedBarber?.label || "Sin seleccionar";
   const selectedStaff = staff.find((staffMember) => staffMember.id === selectedStaffId);
   const schedule = getScheduleForDate(selectedStaff, selectedDate);
   const selectedBusySlots = useMemo(() => {
@@ -270,15 +312,27 @@ export default function TurnosPage() {
           >
             <div>
               <TabsList className="flex h-auto flex-wrap justify-start gap-x-4 gap-y-1 rounded-none bg-transparent p-0">
-                {CHINOS_BARBERS.map((barber) => (
-                  <TabsTrigger
-                    className="relative h-9 rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2 pt-1 text-sm font-medium text-slate-500 shadow-none transition-colors hover:text-slate-950 data-[state=active]:border-sky-500 data-[state=active]:bg-transparent data-[state=active]:text-sky-700 data-[state=active]:shadow-none"
-                    key={barber.staffId}
-                    value={barber.staffId}
-                  >
-                    {barber.label}
-                  </TabsTrigger>
-                ))}
+                {CHINOS_BARBERS.map((barber) => {
+                  const barberProfile = getBarberProfile(barber, barberProfiles);
+                  const barberName = barberProfile?.full_name || barber.label;
+
+                  return (
+                    <TabsTrigger
+                      className="relative h-10 rounded-none border-b-2 border-transparent bg-transparent px-0 pb-2 pt-1 text-sm font-medium text-slate-500 shadow-none transition-colors hover:text-slate-950 data-[state=active]:border-sky-500 data-[state=active]:bg-transparent data-[state=active]:text-sky-700 data-[state=active]:shadow-none"
+                      key={barber.staffId}
+                      value={barber.staffId}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <BarberAvatar
+                          name={barberName}
+                          size="xs"
+                          src={barberProfile?.avatar_url}
+                        />
+                        <span>{barber.label}</span>
+                      </span>
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
             </div>
           </Tabs>
@@ -309,7 +363,12 @@ export default function TurnosPage() {
             <p className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400">
               {getSelectedDateLabel(selectedDate, todayDate)}
             </p>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <BarberAvatar
+                name={selectedBarberName}
+                size="lg"
+                src={selectedBarberProfile?.avatar_url}
+              />
               <h2 className="text-xl font-semibold uppercase tracking-[0.08em] text-slate-950">
                 {selectedBarber?.label || "Sin seleccionar"}
               </h2>

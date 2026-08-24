@@ -1,0 +1,11 @@
+public_staff
+public_services
+public_service_staff
+public_settings
+public_custom_booking_fields
+public_busy_slots
+
+RPC:
+public_staff_monthly_clients
+public_service_discount_uses
+create_public_booking

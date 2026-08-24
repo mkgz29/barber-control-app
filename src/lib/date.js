@@ -85,6 +85,10 @@ function getHaircutDateValue(haircut) {
   return haircut?.haircut_date ?? null;
 }
 
+function getHaircutFinalPriceValue(haircut) {
+  return Number(haircut?.final_price ?? haircut?.price ?? 0);
+}
+
 export function toDateInputValue(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -243,7 +247,7 @@ export function groupHaircutsByBusinessWeeks(haircuts, monthValue = getCurrentMo
     }
 
     block.count += 1;
-    block.gross += Number(haircut.price || 0);
+    block.gross += getHaircutFinalPriceValue(haircut);
     block.commission += Number(haircut.commission_amount || 0);
   });
 

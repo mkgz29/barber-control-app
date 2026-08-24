@@ -2,6 +2,7 @@ import { Crown } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import BarberAvatar from "./BarberAvatar";
 
 function getBarbershopName(entry) {
   const rawBarbershopName =
@@ -31,7 +32,7 @@ function RankingRow({ entry, position, onClick }) {
       onClick={onClick}
       {...(typeof onClick === "function" ? { type: "button" } : {})}
     >
-      <div className="grid min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 py-2.5">
+      <div className="grid min-h-14 grid-cols-[2.5rem_auto_minmax(0,1fr)_auto] items-center gap-3 py-2.5">
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold ${
             isTopThree ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-600"
@@ -39,6 +40,12 @@ function RankingRow({ entry, position, onClick }) {
         >
           {position + 1}
         </div>
+
+        <BarberAvatar
+          name={entry.barber_name || "Sin nombre"}
+          size="sm"
+          src={entry.avatar_url}
+        />
 
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
@@ -75,7 +82,7 @@ export default function WeeklyRanking({ ranking = [], onSelectEntry }) {
       ) : (
         <div className="rounded-lg border border-slate-200 bg-white px-3 sm:px-4">
           {ranking.map((entry, index) => (
-            <div key={`${entry.barber_name}-${index}`}>
+            <div key={`${entry.barber_id || entry.barber_name}-${index}`}>
               <RankingRow
                 entry={entry}
                 onClick={onSelectEntry ? () => onSelectEntry(entry) : undefined}

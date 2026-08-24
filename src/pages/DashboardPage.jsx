@@ -13,6 +13,7 @@ import {
   getBusinessWeekRange,
   toDateInputValue,
 } from "../lib/date";
+import { mapServiceToOption } from "../lib/services";
 import supabase from "../lib/supabaseClient";
 
 function buildCurrentWeekState(referenceDate = new Date()) {
@@ -26,9 +27,12 @@ export default function DashboardPage() {
   const { user, profile } = useAuth();
   const [haircuts, setHaircuts] = useState([]);
   const [weeklyMetricHaircuts, setWeeklyMetricHaircuts] = useState([]);
+  const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [servicesLoading, setServicesLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [servicesError, setServicesError] = useState("");
   const [currentWeek, setCurrentWeek] = useState(() => buildCurrentWeekState());
   const [todayDate, setTodayDate] = useState(() => getArgentinaTodayValue(new Date()));
   const [todayCreateRequestKey, setTodayCreateRequestKey] = useState(0);
@@ -116,17 +120,52 @@ export default function DashboardPage() {
     loadHaircuts();
   }, [user?.id, weekRange.start.getTime()]);
 
+  async function loadServices() {
+    setServicesLoading(true);
+    setServicesError("");
+
+    try {
+      const { data, error: fetchError } = await supabase
+        .from("services")
+        .select("id,name,price,is_active")
+        .eq("is_active", true)
+        .order("name", { ascending: true });
+
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setServices((data || []).map(mapServiceToOption));
+    } catch (loadError) {
+      setServicesError(loadError.message || "No se pudieron cargar los servicios.");
+    } finally {
+      setServicesLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (user?.id) {
+      loadServices();
+    }
+  }, [user?.id]);
+
   function buildHaircutPayload(values) {
     const commissionPercentage = Number(profile?.commission_percentage || 0);
-    const price = Number(values.price);
+    const finalPrice = Number(values.final_price ?? values.price);
+    const basePrice = Number(values.base_price ?? finalPrice);
+    const serviceName = values.service_name_snapshot || values.service;
 
     return {
-      service: values.service,
-      price,
+      service_id: values.service_id || null,
+      service_name_snapshot: serviceName,
+      base_price: basePrice,
+      final_price: finalPrice,
+      service: serviceName,
+      price: finalPrice,
       haircut_date: values.haircut_date,
       attendance_type: values.attendance_type,
       commission_percentage: commissionPercentage,
-      commission_amount: (price * commissionPercentage) / 100,
+      commission_amount: (finalPrice * commissionPercentage) / 100,
     };
   }
 
@@ -279,8 +318,12 @@ export default function DashboardPage() {
             isToday
             onAddHaircut={handleAddHaircut}
             onDeleteHaircut={handleDeleteHaircut}
+            onReloadServices={loadServices}
             onUpdateHaircut={handleUpdateHaircut}
             saving={saving}
+            services={services}
+            servicesError={servicesError}
+            servicesLoading={servicesLoading}
           />
         </section>
       )}
@@ -315,8 +358,12 @@ export default function DashboardPage() {
                   key={day.date}
                   onAddHaircut={handleAddHaircut}
                   onDeleteHaircut={handleDeleteHaircut}
+                  onReloadServices={loadServices}
                   onUpdateHaircut={handleUpdateHaircut}
                   saving={saving}
+                  services={services}
+                  servicesError={servicesError}
+                  servicesLoading={servicesLoading}
                 />
               );
             })}

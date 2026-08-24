@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import BarberAvatar from "../components/BarberAvatar";
 import { getArgentinaTodayValue } from "../lib/date";
 import supabase from "../lib/supabaseClient";
 
@@ -27,7 +28,7 @@ function RankingRow({ entry, position }) {
 
   return (
     <div>
-      <div className="grid min-h-14 grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 py-2.5">
+      <div className="grid min-h-14 grid-cols-[2.5rem_auto_minmax(0,1fr)_auto] items-center gap-3 py-2.5">
         <div
           className={`flex h-8 w-8 items-center justify-center rounded-md text-sm font-semibold ${
             isTopThree ? "bg-sky-50 text-sky-700" : "bg-slate-100 text-slate-600"
@@ -35,6 +36,12 @@ function RankingRow({ entry, position }) {
         >
           {getRankLabel(position)}
         </div>
+
+        <BarberAvatar
+          name={entry.barber_name || "Sin nombre"}
+          size="sm"
+          src={entry.avatar_url}
+        />
 
         <div className="min-w-0">
           <div className="flex min-w-0 items-center gap-2">
@@ -135,7 +142,7 @@ export default function RankingMonthlyPage() {
         ) : (
           <div className="rounded-lg border border-slate-200 bg-white px-3 sm:px-4">
             {ranking.map((entry, index) => (
-              <div key={`${entry.barber_name}-${entry.barbershop_name || "sin-barberia"}-${index}`}>
+              <div key={`${entry.barber_id || entry.barber_name}-${entry.barbershop_name || "sin-barberia"}-${index}`}>
                 <RankingRow entry={entry} position={index} />
                 {index < ranking.length - 1 && <Separator className="bg-slate-200" />}
               </div>
