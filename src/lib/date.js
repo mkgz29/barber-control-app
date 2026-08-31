@@ -8,6 +8,16 @@ const BUSINESS_WEEKDAY_NAMES = [
   "Viernes",
 ];
 
+const CALENDAR_WEEKDAY_NAMES = [
+  "Lunes",
+  "Martes",
+  "Miercoles",
+  "Jueves",
+  "Viernes",
+  "Sabado",
+  "Domingo",
+];
+
 const ARGENTINA_TIME_ZONE = "America/Argentina/Tucuman";
 
 export function formatCurrency(value) {
@@ -141,6 +151,59 @@ export function getBusinessWeekDays(referenceDate = new Date()) {
       }).format(current),
     };
   });
+}
+
+export function getCalendarWeekRange(referenceDate = new Date()) {
+  const reference = parseDateValue(referenceDate);
+  const day = reference.getDay();
+  const diffFromMonday = (day - 1 + 7) % 7;
+  const start = new Date(reference);
+  start.setDate(reference.getDate() - diffFromMonday);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
+export function getCalendarWeekDays(referenceDate = new Date()) {
+  const { start } = getCalendarWeekRange(referenceDate);
+
+  return CALENDAR_WEEKDAY_NAMES.map((label, index) => {
+    const current = new Date(start);
+    current.setDate(start.getDate() + index);
+
+    return {
+      label,
+      date: toDateInputValue(current),
+      shortLabel: new Intl.DateTimeFormat("es-AR", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: ARGENTINA_TIME_ZONE,
+      }).format(current),
+    };
+  });
+}
+
+export function addCalendarDays(dateValue, amount) {
+  return toDateInputValue(addDays(dateValue, amount));
+}
+
+export function addCalendarWeeks(dateValue, amount) {
+  return addCalendarDays(dateValue, amount * 7);
+}
+
+export function getWeeklyHistoryInitialDateValue(referenceDate = new Date()) {
+  const todayValue = getArgentinaTodayValue(referenceDate);
+  const today = parseDateValue(todayValue);
+
+  if (today.getDay() === 1) {
+    return addCalendarDays(todayValue, -7);
+  }
+
+  return todayValue;
 }
 
 export function formatBusinessWeekRange(range) {

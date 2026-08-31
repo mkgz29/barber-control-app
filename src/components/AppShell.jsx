@@ -1,4 +1,4 @@
-import { CalendarDays, Clock, ListChecks, LogOut, Scissors, Shield, Trophy, User } from "lucide-react";
+import { CalendarDays, CalendarRange, Clock, ListChecks, LogOut, Scissors, Shield, User } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import BarberAvatar from "./BarberAvatar";
 import { useAuth } from "../context/AuthContext";
@@ -71,9 +71,9 @@ export default function AppShell() {
 
           <nav className="grid grid-cols-3 gap-1.5 sm:grid-cols-6 lg:flex lg:flex-1 lg:justify-center lg:gap-1">
             <NavItem to="/semana" label="Semana" icon={Scissors} />
+            <NavItem to="/semanas" label="Semanas" icon={CalendarRange} />
             <NavItem to="/turnos" label="Turnos" icon={Clock} />
             <NavItem to="/resumen-mensual" label="Mes" icon={CalendarDays} />
-            <NavItem to="/ranking-mensual" label="Ranking" icon={Trophy} />
             {profile?.role === "admin" && <NavItem to="/servicios" label="Servicios" icon={ListChecks} />}
             <NavItem to="/perfil" label="Perfil" icon={User} />
             {profile?.role === "admin" && <NavItem to="/admin" label="Admin" icon={Shield} />}

@@ -8,10 +8,10 @@ import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
 import MonthlySummaryPage from "./pages/MonthlySummaryPage";
 import ProfileSetupPage from "./pages/ProfileSetupPage";
-import RankingMonthlyPage from "./pages/RankingMonthlyPage";
 import ServicesPage from "./pages/ServicesPage";
 import TurnosPage from "./pages/TurnosPage";
 import UpdatePasswordPage from "./pages/UpdatePasswordPage";
+import WeeklyHistoryPage from "./pages/WeeklyHistoryPage";
 
 export default function App() {
   return (
@@ -24,10 +24,10 @@ export default function App() {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppShell />}>
           <Route path="/semana" element={<DashboardPage />} />
+          <Route path="/semanas" element={<WeeklyHistoryPage />} />
           <Route path="/perfil" element={<ProfileSetupPage />} />
           <Route path="/turnos" element={<TurnosPage />} />
           <Route path="/resumen-mensual" element={<MonthlySummaryPage />} />
-          <Route path="/ranking-mensual" element={<RankingMonthlyPage />} />
 
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
